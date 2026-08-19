@@ -1,41 +1,54 @@
 import { LinearGradient } from "expo-linear-gradient";
+import { usePathname, useRouter } from "expo-router";
 import {
-    AlertTriangle,
-    Bell,
-    ChevronDown,
-    ChevronRight,
-    Download,
-    LogOut,
-    Search,
-    Settings,
-    User,
+  AlertTriangle,
+  Bell,
+  BarChart3,
+  Boxes,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  FileText,
+  Info,
+  LayoutGrid,
+  LogOut,
+  MoreHorizontal,
+  Moon,
+  Package,
+  Receipt,
+  Search,
+  Settings,
+  Sun,
+  Truck,
+  User,
+  Users,
 } from "lucide-react-native";
 import type { ReactNode } from "react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-    Modal,
-    Pressable,
-    ScrollView,
-    Text,
-    TextInput,
-    View,
-    type ViewStyle,
+  Modal,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+  type ViewStyle,
 } from "react-native";
 
 /**
- * Dashboard chrome — LIGHT theme, pulled from design.css's :root tokens.
- *   bg #FFFFFF · page #F7F9F8 · text-primary #111827 · text-secondary #4B5563
- *   primary #0A5C36 · primary-dark #063D24 · primary-tint #E6F2EB
+ * Mizani design system — every screen's chrome, cards and navigation.
  *
- * Distinction model: the page itself sits on SURFACE (a soft off-white),
- * every card/pill/row sits on pure BG (white), and the contrast between
- * those two — reinforced by shadow, not borders — is what separates one
- * element from the next. Semi-transparent (rgba) fills are used ONLY
- * where a tint needs to sit *on top of* another surface (badges, avatars,
- * the dropdown/modal backdrop) rather than replace it outright — every
- * other surface stays fully opaque so it never looks washed out or lets
- * whatever's behind it show through.
+ * Tokens mirror global.css :root. Surface model: the page sits on SURFACE
+ * (off-white), cards sit on BG (white) or on a page gradient, and depth comes
+ * from shadow rather than borders. Translucent (rgba) fills appear ONLY on top
+ * of a gradient — that is the "glass" treatment. Anything sitting directly on
+ * SURFACE or BG uses a fully opaque solid color so it never looks washed out.
  */
+
+/* ---------------------------------------------------------------- */
+/* Tokens                                                            */
+/* ---------------------------------------------------------------- */
 
 export const BG = "#FFFFFF";
 export const SURFACE = "#F7F9F8";
@@ -46,21 +59,36 @@ export const GREEN = "#0A5C36";
 export const GREEN_DARK = "#063D24";
 export const GREEN_TINT = "#E6F2EB";
 export const WARNING = "#D97706";
+export const WARNING_DARK = "#92400E";
 export const WARNING_BG = "#FEF3E2";
 export const DANGER = "#DC2626";
 export const DANGER_DARK = "#991B1B";
 export const DANGER_BG = "#FDECEC";
 
-export const OVERLAY_SCRIM = "rgba(17,24,39,0.32)";
-export const GLASS_HEADER = "rgba(255,255,255,0.82)";
-export const GREEN_TINT_A = "rgba(10,92,54,0.10)";
-export const DANGER_TINT_A = "rgba(220,38,38,0.08)";
+export const OVERLAY_SCRIM = "rgba(17,24,39,0.42)";
+
+/** Glass layers — valid only on top of a gradient surface. */
+export const GLASS_FILL = "rgba(255,255,255,0.14)";
+export const GLASS_FILL_STRONG = "rgba(255,255,255,0.22)";
+export const GLASS_BORDER = "rgba(255,255,255,0.28)";
+export const GLASS_TEXT = "rgba(255,255,255,0.86)";
+export const GLASS_TEXT_DIM = "rgba(255,255,255,0.70)";
+
+/** Opaque tints for pills sitting on white — solid, not rgba. */
+export const GREEN_TINT_A = GREEN_TINT;
+export const WARNING_TINT_A = WARNING_BG;
+export const DANGER_TINT_A = DANGER_BG;
 
 export const SPACE_1 = 4;
 export const SPACE_2 = 8;
 export const SPACE_3 = 16;
 export const SPACE_4 = 24;
 export const SPACE_5 = 32;
+
+export const FONT_REG = "Lexend_400Regular";
+export const FONT_MED = "Lexend_500Medium";
+export const FONT_SEMI = "Lexend_600SemiBold";
+export const FONT_BOLD = "Lexend_700Bold";
 
 export const SHADOW_SM: ViewStyle = {
   shadowColor: "#0F172A",
@@ -78,18 +106,198 @@ export const SHADOW_MD: ViewStyle = {
   elevation: 8,
 };
 
-/** Opaque, "lively" brand gradient — used sparingly on hero/CTA surfaces only. Requires expo-linear-gradient. */
-export const GRADIENT_PRIMARY: [string, string, string] = [
-  "#063D24",
-  "#0A5C36",
-  "#22C55E",
-];
-export const GRADIENT_AMBER: [string, string] = ["#B45309", "#F59E0B"];
+export type Gradient = [string, string, ...string[]];
 
-const FONT_REG = "Lexend_400Regular";
-const FONT_MED = "Lexend_500Medium";
-const FONT_SEMI = "Lexend_600SemiBold";
-const FONT_BOLD = "Lexend_700Bold";
+/**
+ * Page gradients — every hue is a token from global.css (primary green,
+ * bahari blue, warning amber, simba red) pushed to a dark → mid → lively stop.
+ * Structure stays identical across screens; only the hue changes per page.
+ */
+export const GRADIENT_FOREST: Gradient = ["#063D24", "#0A5C36", "#22C55E"];
+export const GRADIENT_OCEAN: Gradient = ["#063347", "#0B4F6C", "#22D3EE"];
+export const GRADIENT_AMBER: Gradient = ["#7C2D12", "#B45309", "#F59E0B"];
+export const GRADIENT_TEAL: Gradient = ["#053B2C", "#0F766E", "#2DD4BF"];
+export const GRADIENT_VIOLET: Gradient = ["#3B0764", "#6D28D9", "#A78BFA"];
+export const GRADIENT_INDIGO: Gradient = ["#172554", "#2563EB", "#60A5FA"];
+export const GRADIENT_SLATE: Gradient = ["#0F172A", "#334155", "#64748B"];
+export const GRADIENT_CRIMSON: Gradient = ["#7F1414", "#B91C1C", "#F87171"];
+
+/** Brand gradient — the avatar, FAB and primary CTAs use this on every screen. */
+export const GRADIENT_PRIMARY = GRADIENT_FOREST;
+
+const GRADIENT_START = { x: 0, y: 0 } as const;
+const GRADIENT_END = { x: 1, y: 1 } as const;
+
+/* ---------------------------------------------------------------- */
+/* Toast                                                             */
+/* ---------------------------------------------------------------- */
+
+let toastListener: ((message: string) => void) | null = null;
+
+/** Fire-and-forget confirmation, e.g. "Transaction saved". Rendered by ToastHost. */
+export function showToast(message: string) {
+  toastListener?.(message);
+}
+
+/** Mount once per screen, after the BottomNav, to display showToast() messages. */
+export function ToastHost() {
+  const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    toastListener = (m) => setMessage(m);
+    return () => {
+      toastListener = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!message) return;
+    const t = setTimeout(() => setMessage(null), 2400);
+    return () => clearTimeout(t);
+  }, [message]);
+
+  if (!message) return null;
+
+  return (
+    <View
+      pointerEvents="none"
+      style={{ position: "absolute", left: 16, right: 16, bottom: 96 }}
+    >
+      <View
+        className="rounded-[12px] px-4 py-3"
+        style={{ backgroundColor: TEXT_PRIMARY, ...SHADOW_MD }}
+      >
+        <Text
+          className="text-[13px]"
+          style={{ color: "#FFFFFF", fontFamily: FONT_MED }}
+        >
+          {message}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+/* ---------------------------------------------------------------- */
+/* Route registry — the single source of truth for navigation.        */
+/* Add a page here and it appears in the tab bar or the More sheet    */
+/* on every screen, with no per-screen wiring.                       */
+/* ---------------------------------------------------------------- */
+
+export type NavKey = string;
+
+export type NavRoute = {
+  /** Stable id — also the BottomNav active key. */
+  key: NavKey;
+  label: string;
+  /** expo-router path. The last segment is matched against the pathname. */
+  href: string;
+  icon: (color: string, size?: number) => ReactNode;
+  /** "tab" pins it to the bottom bar, "more" puts it in the More sheet. */
+  slot: "tab" | "more";
+  /** Page accent gradient, used by that screen's hero card. */
+  gradient: Gradient;
+  badge?: number;
+};
+
+export const APP_ROUTES: NavRoute[] = [
+  {
+    key: "dashboard",
+    label: "Dashboard",
+    href: "/(dashboard)/main",
+    icon: (c, s = 20) => <LayoutGrid size={s} color={c} />,
+    slot: "tab",
+    gradient: GRADIENT_FOREST,
+  },
+  {
+    key: "sales",
+    label: "Sales",
+    href: "/(dashboard)/sales",
+    icon: (c, s = 20) => <Receipt size={s} color={c} />,
+    slot: "tab",
+    gradient: GRADIENT_OCEAN,
+  },
+  {
+    key: "kra",
+    label: "KRA",
+    href: "/(dashboard)/kra",
+    icon: (c, s = 20) => <FileText size={s} color={c} />,
+    slot: "tab",
+    gradient: GRADIENT_AMBER,
+    badge: 2,
+  },
+  {
+    key: "payroll",
+    label: "Payroll",
+    href: "/(dashboard)/payroll",
+    icon: (c, s = 20) => <Users size={s} color={c} />,
+    slot: "tab",
+    gradient: GRADIENT_VIOLET,
+  },
+  {
+    key: "inventory",
+    label: "Inventory",
+    href: "/(dashboard)/inventory",
+    icon: (c, s = 20) => <Package size={s} color={c} />,
+    slot: "more",
+    gradient: GRADIENT_TEAL,
+  },
+  {
+    key: "suppliers",
+    label: "Suppliers",
+    href: "/(dashboard)/suppliers",
+    icon: (c, s = 20) => <Truck size={s} color={c} />,
+    slot: "more",
+    gradient: GRADIENT_SLATE,
+  },
+  {
+    key: "reports",
+    label: "Reports",
+    href: "/(dashboard)/reports",
+    icon: (c, s = 20) => <BarChart3 size={s} color={c} />,
+    slot: "more",
+    gradient: GRADIENT_INDIGO,
+  },
+  {
+    key: "notifications",
+    label: "Notifications",
+    href: "/(dashboard)/notifications",
+    icon: (c, s = 20) => <Bell size={s} color={c} />,
+    slot: "more",
+    gradient: GRADIENT_SLATE,
+  },
+];
+
+/** Settings is reached from the avatar menu only — never the tab bar or More sheet. */
+export const SETTINGS_HREF = "/(dashboard)/settings";
+export const ADD_TRANSACTION_HREF = "/(dashboard)/add-transaction";
+
+export const TAB_ROUTES = APP_ROUTES.filter((r) => r.slot === "tab");
+export const MORE_ROUTES = APP_ROUTES.filter((r) => r.slot === "more");
+
+const lastSegment = (path: string) => path.split("/").filter(Boolean).pop();
+
+export function routeByKey(key: NavKey) {
+  return APP_ROUTES.find((r) => r.key === key);
+}
+
+/** Page accent gradient for a route key, falling back to the brand gradient. */
+export function gradientFor(key: NavKey): Gradient {
+  return routeByKey(key)?.gradient ?? GRADIENT_PRIMARY;
+}
+
+/** Resolves the active route key from the current pathname. */
+export function useActiveRouteKey(): NavKey | undefined {
+  const pathname = usePathname();
+  const segment = lastSegment(pathname ?? "");
+  if (!segment) return undefined;
+  if (segment === "main") return "dashboard";
+  return APP_ROUTES.find((r) => lastSegment(r.href) === segment)?.key;
+}
+
+/* ---------------------------------------------------------------- */
+/* Primitives                                                        */
+/* ---------------------------------------------------------------- */
 
 function useAnchor() {
   const ref = useRef<View>(null);
@@ -131,10 +339,10 @@ function DropdownMenu({
       >
         <Pressable
           onPress={(e) => e.stopPropagation()}
-          className="rounded-[12px] overflow-hidden"
+          className="rounded-[14px] overflow-hidden"
           style={{
             position: "absolute",
-            top: anchor.y + anchor.height + 6,
+            top: anchor.y + anchor.height + 8,
             left,
             width,
             backgroundColor: BG,
@@ -148,6 +356,52 @@ function DropdownMenu({
   );
 }
 
+/** Translucent panel — only valid on top of a gradient (the glass treatment). */
+export function GlassPanel({
+  children,
+  strong,
+  style,
+}: {
+  children: ReactNode;
+  strong?: boolean;
+  style?: ViewStyle;
+}) {
+  return (
+    <View
+      className="rounded-[12px] p-4"
+      style={{
+        backgroundColor: strong ? GLASS_FILL_STRONG : GLASS_FILL,
+        borderWidth: 1,
+        borderColor: GLASS_BORDER,
+        ...style,
+      }}
+    >
+      {children}
+    </View>
+  );
+}
+
+/** Glass pill — the small translucent badge used on gradient surfaces. */
+export function GlassBadge({ label }: { label: string }) {
+  return (
+    <View
+      className="px-2.5 py-1 rounded-[999px]"
+      style={{
+        backgroundColor: GLASS_FILL_STRONG,
+        borderWidth: 1,
+        borderColor: GLASS_BORDER,
+      }}
+    >
+      <Text
+        className="text-[11px]"
+        style={{ color: "#FFFFFF", fontFamily: FONT_SEMI }}
+      >
+        {label}
+      </Text>
+    </View>
+  );
+}
+
 export function PillRow({ children }: { children: ReactNode }) {
   return (
     <ScrollView
@@ -155,28 +409,12 @@ export function PillRow({ children }: { children: ReactNode }) {
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={{
         paddingVertical: SPACE_2,
-        paddingHorizontal: 2,
+        paddingHorizontal: SPACE_3,
         alignItems: "center",
       }}
     >
       {children}
     </ScrollView>
-  );
-}
-
-export function BrandMark({ size = 36 }: { size?: number }) {
-  return (
-    <View
-      className="items-center justify-center rounded-[10px] mr-2"
-      style={{
-        width: size,
-        height: size,
-        backgroundColor: GREEN,
-        ...SHADOW_SM,
-      }}
-    >
-      <Text style={{ fontSize: size * 0.5 }}>⚖️</Text>
-    </View>
   );
 }
 
@@ -224,7 +462,7 @@ export function SelectorPill({
           visible={open}
           onClose={() => setOpen(false)}
           anchor={anchor}
-          width={200}
+          width={210}
         >
           {options!.map((opt, i) => {
             const active = opt === label;
@@ -260,13 +498,12 @@ export function SelectorPill({
   );
 }
 
-/** Round icon button. `size` controls the container diameter — bump it for
- *  header-level actions (bell, search, settings) that should read as primary. */
+/** Round icon button. Header-level actions use size 44 so they read as primary. */
 export function IconButton({
   icon,
   onPress,
   dot,
-  size = 40,
+  size = 44,
 }: {
   icon: ReactNode;
   onPress?: () => void;
@@ -282,13 +519,23 @@ export function IconButton({
       {icon}
       {dot && (
         <View
-          className="absolute top-2 right-2 w-2 h-2 rounded-[999px]"
-          style={{ backgroundColor: DANGER }}
+          className="absolute top-2.5 right-2.5 rounded-[999px]"
+          style={{
+            width: 9,
+            height: 9,
+            backgroundColor: DANGER,
+            borderWidth: 1.5,
+            borderColor: BG,
+          }}
         />
       )}
     </Pressable>
   );
 }
+
+/* ---------------------------------------------------------------- */
+/* Header — no app name or logo: gradient avatar left, bell right.    */
+/* ---------------------------------------------------------------- */
 
 export type NotificationTone = "positive" | "warning" | "danger" | "neutral";
 
@@ -324,15 +571,30 @@ export function NotificationBell({
           measure();
           setOpen(true);
         }}
-        className="w-11 h-11 rounded-[999px] items-center justify-center ml-2"
+        className="w-12 h-12 rounded-[999px] items-center justify-center ml-2"
         style={{ backgroundColor: BG, ...SHADOW_SM }}
       >
-        <Bell size={20} color={TEXT_SECONDARY} />
+        <Bell size={22} color={TEXT_PRIMARY} />
         {notifications.length > 0 && (
           <View
-            className="absolute top-2 right-2 w-2 h-2 rounded-[999px]"
-            style={{ backgroundColor: DANGER }}
-          />
+            className="absolute rounded-[999px] items-center justify-center"
+            style={{
+              top: 6,
+              right: 6,
+              minWidth: 18,
+              height: 18,
+              paddingHorizontal: 4,
+              backgroundColor: DANGER,
+              borderWidth: 2,
+              borderColor: BG,
+            }}
+          >
+            <Text
+              style={{ color: "#FFFFFF", fontSize: 9, fontFamily: FONT_BOLD }}
+            >
+              {notifications.length}
+            </Text>
+          </View>
         )}
       </Pressable>
 
@@ -341,7 +603,7 @@ export function NotificationBell({
         onClose={() => setOpen(false)}
         anchor={anchor}
         align="right"
-        width={280}
+        width={290}
       >
         <View
           className="px-4 py-3"
@@ -361,7 +623,7 @@ export function NotificationBell({
               className="text-[13px]"
               style={{ color: TEXT_SECONDARY, fontFamily: FONT_REG }}
             >
-              You&lsquo;re all caught up
+              You&rsquo;re all caught up
             </Text>
           </View>
         ) : (
@@ -415,13 +677,24 @@ export function NotificationBell({
   );
 }
 
-/** Gear icon next to the bell — quick access to Settings without leaving via the avatar menu. */
-export function SettingsMenu({
+/** Gradient-filled avatar — the app's most-tapped control, so it carries the
+ *  brand gradient and a white ring to stay unmissable against the page. */
+export function UserMenu({
+  initials,
+  name,
+  role,
+  onAccount,
   onSettings,
-  onHelp,
+  onLogout,
+  colors = GRADIENT_PRIMARY,
 }: {
+  initials: string;
+  name?: string;
+  role?: string;
+  onAccount?: () => void;
   onSettings?: () => void;
-  onHelp?: () => void;
+  onLogout?: () => void;
+  colors?: Gradient;
 }) {
   const { ref, anchor, measure } = useAnchor();
   const [open, setOpen] = useState(false);
@@ -434,46 +707,111 @@ export function SettingsMenu({
           measure();
           setOpen(true);
         }}
-        className="w-11 h-11 rounded-[999px] items-center justify-center ml-2"
-        style={{ backgroundColor: BG, ...SHADOW_SM }}
+        className="rounded-[999px] items-center justify-center"
+        style={{
+          width: 48,
+          height: 48,
+          backgroundColor: BG,
+          padding: 2.5,
+          ...SHADOW_MD,
+        }}
       >
-        <Settings size={20} color={TEXT_SECONDARY} />
+        <LinearGradient
+          colors={colors}
+          start={GRADIENT_START}
+          end={GRADIENT_END}
+          style={{
+            flex: 1,
+            alignSelf: "stretch",
+            borderRadius: 999,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Text
+            className="text-[15px]"
+            style={{ color: "#FFFFFF", fontFamily: FONT_BOLD }}
+          >
+            {initials}
+          </Text>
+        </LinearGradient>
       </Pressable>
 
       <DropdownMenu
         visible={open}
         onClose={() => setOpen(false)}
         anchor={anchor}
-        align="right"
-        width={190}
+        width={220}
       >
+        {(name || role) && (
+          <View
+            className="px-4 py-3"
+            style={{ borderBottomWidth: 1, borderBottomColor: BORDER }}
+          >
+            <Text
+              className="text-[13px]"
+              style={{ color: TEXT_PRIMARY, fontFamily: FONT_SEMI }}
+            >
+              {name}
+            </Text>
+            {!!role && (
+              <Text
+                className="text-[11px] mt-0.5"
+                style={{ color: TEXT_SECONDARY, fontFamily: FONT_REG }}
+              >
+                {role}
+              </Text>
+            )}
+          </View>
+        )}
+
         <Pressable
-          className="px-4 py-3"
+          className="flex-row items-center px-4 py-3"
+          onPress={() => {
+            setOpen(false);
+            onAccount?.();
+          }}
+        >
+          <User size={16} color={TEXT_SECONDARY} />
+          <Text
+            className="text-[13px] ml-2.5"
+            style={{ color: TEXT_PRIMARY, fontFamily: FONT_MED }}
+          >
+            Account
+          </Text>
+        </Pressable>
+
+        <Pressable
+          className="flex-row items-center px-4 py-3"
+          style={{ borderTopWidth: 1, borderTopColor: BORDER }}
           onPress={() => {
             setOpen(false);
             onSettings?.();
           }}
         >
+          <Settings size={16} color={TEXT_SECONDARY} />
           <Text
-            className="text-[13px]"
+            className="text-[13px] ml-2.5"
             style={{ color: TEXT_PRIMARY, fontFamily: FONT_MED }}
           >
             Settings
           </Text>
         </Pressable>
+
         <Pressable
-          className="px-4 py-3"
+          className="flex-row items-center px-4 py-3"
           style={{ borderTopWidth: 1, borderTopColor: BORDER }}
           onPress={() => {
             setOpen(false);
-            onHelp?.();
+            onLogout?.();
           }}
         >
+          <LogOut size={16} color={DANGER} />
           <Text
-            className="text-[13px]"
-            style={{ color: TEXT_PRIMARY, fontFamily: FONT_MED }}
+            className="text-[13px] ml-2.5"
+            style={{ color: DANGER, fontFamily: FONT_MED }}
           >
-            Help & Support
+            Log out
           </Text>
         </Pressable>
       </DropdownMenu>
@@ -481,14 +819,69 @@ export function SettingsMenu({
   );
 }
 
+/**
+ * Shared top bar for every screen: profile avatar on the left (Account,
+ * Settings and Log out all live in its menu — there is deliberately no
+ * separate gear icon) and notifications on the right.
+ */
+export function AppHeader({
+  initials = "WM",
+  name,
+  role,
+  notifications = [],
+  showBack,
+}: {
+  initials?: string;
+  name?: string;
+  role?: string;
+  notifications?: NotificationItem[];
+  /** For pushed screens such as Settings, which are not in the tab bar. */
+  showBack?: boolean;
+}) {
+  const router = useRouter();
+
+  return (
+    <View className="flex-row items-center justify-between px-4">
+      <View className="flex-row items-center">
+        {showBack && (
+          <Pressable
+            onPress={() => router.back()}
+            className="w-11 h-11 rounded-[999px] items-center justify-center mr-2"
+            style={{ backgroundColor: BG, ...SHADOW_SM }}
+          >
+            <ChevronLeft size={20} color={TEXT_PRIMARY} />
+          </Pressable>
+        )}
+        <UserMenu
+          initials={initials}
+          name={name}
+          role={role}
+          onAccount={() => showToast("Account profile coming soon")}
+          onSettings={() => router.push(SETTINGS_HREF as never)}
+          onLogout={() => router.replace("/login" as never)}
+        />
+      </View>
+
+      <NotificationBell
+        notifications={notifications}
+        onViewAll={() => router.push("/(dashboard)/notifications" as never)}
+      />
+    </View>
+  );
+}
+
+/* ---------------------------------------------------------------- */
+/* Search                                                            */
+/* ---------------------------------------------------------------- */
+
 export type SearchItem = { id: string; title: string; subtitle: string };
 
 export function SearchTrigger({ onPress }: { onPress: () => void }) {
   return (
     <IconButton
-      icon={<Search size={18} color={TEXT_SECONDARY} />}
+      icon={<Search size={18} color={TEXT_PRIMARY} />}
       onPress={onPress}
-      size={44}
+      size={40}
     />
   );
 }
@@ -586,7 +979,7 @@ export function SearchModal({
                     fontSize: 13,
                   }}
                 >
-                  No results for `{query}`
+                  No results for “{query}”
                 </Text>
               </View>
             ) : (
@@ -633,6 +1026,10 @@ export function SearchModal({
   );
 }
 
+/* ---------------------------------------------------------------- */
+/* Buttons                                                           */
+/* ---------------------------------------------------------------- */
+
 export function GhostPillButton({
   label,
   icon,
@@ -645,7 +1042,7 @@ export function GhostPillButton({
   return (
     <Pressable
       onPress={onPress}
-      className="flex-row items-center px-3 py-2 rounded-[999px] mr-2"
+      className="flex-row items-center self-start px-3.5 py-2.5 rounded-[999px]"
       style={{ backgroundColor: BG, ...SHADOW_SM }}
     >
       {icon}
@@ -659,196 +1056,346 @@ export function GhostPillButton({
   );
 }
 
+/** Primary CTA — gradient fill, so it reads as the liveliest thing on the page. */
 export function PrimaryButton({
   label,
   icon,
   onPress,
+  colors = GRADIENT_PRIMARY,
 }: {
   label: string;
   icon?: ReactNode;
   onPress?: () => void;
+  colors?: Gradient;
 }) {
   return (
-    <Pressable
-      onPress={onPress}
-      className="flex-row items-center justify-center px-4 py-3 rounded-[999px]"
-      style={{ backgroundColor: GREEN, ...SHADOW_SM }}
-    >
-      {icon}
-      <Text
-        className="text-[14px] ml-1.5"
-        style={{ color: "#FFFFFF", fontFamily: FONT_SEMI }}
+    <Pressable onPress={onPress} style={{ borderRadius: 999, ...SHADOW_SM }}>
+      <LinearGradient
+        colors={colors}
+        start={GRADIENT_START}
+        end={GRADIENT_END}
+        style={{
+          borderRadius: 999,
+          height: 50,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
       >
-        {label}
-      </Text>
+        {icon}
+        <Text
+          className="text-[14px] ml-1.5"
+          style={{ color: "#FFFFFF", fontFamily: FONT_SEMI }}
+        >
+          {label}
+        </Text>
+      </LinearGradient>
     </Pressable>
   );
 }
 
-export function UserMenu({
-  initials,
-  onAccount,
-  onSettings,
-  onLogout,
+/* ---------------------------------------------------------------- */
+/* Greeting                                                          */
+/* ---------------------------------------------------------------- */
+
+function timeOfDay(hour: number) {
+  if (hour < 12) return { label: "Good morning", icon: Sun };
+  if (hour < 17) return { label: "Good afternoon", icon: Sun };
+  return { label: "Good evening", icon: Moon };
+}
+
+/**
+ * Dashboard welcome banner — gradient surface, Lexend throughout, with the
+ * time-of-day icon set in a glass circle so the greeting and the icon read as
+ * one element rather than two stacked ones.
+ */
+export function GreetingBanner({
+  name,
+  subtitle,
+  colors = GRADIENT_PRIMARY,
 }: {
-  initials: string;
-  onAccount?: () => void;
-  onSettings?: () => void;
-  onLogout?: () => void;
+  name: string;
+  subtitle?: string;
+  colors?: Gradient;
 }) {
-  const [open, setOpen] = useState(false);
+  const { label, icon: Icon } = timeOfDay(new Date().getHours());
 
   return (
-    <View style={{ position: "relative", zIndex: 50 }}>
-      <Pressable
-        onPress={() => setOpen((v) => !v)}
-        className="w-11 h-11 rounded-[999px] items-center justify-center ml-2"
-        style={{ backgroundColor: GREEN_TINT }}
-      >
-        <Text
-          className="text-[14px]"
-          style={{ color: GREEN, fontFamily: FONT_SEMI }}
+    <LinearGradient
+      colors={colors}
+      start={GRADIENT_START}
+      end={GRADIENT_END}
+      style={{ borderRadius: 18, padding: 18, ...SHADOW_MD }}
+    >
+      <View className="flex-row items-center">
+        <View
+          className="rounded-[999px] items-center justify-center mr-3.5"
+          style={{
+            width: 46,
+            height: 46,
+            backgroundColor: GLASS_FILL_STRONG,
+            borderWidth: 1,
+            borderColor: GLASS_BORDER,
+          }}
         >
-          {initials}
-        </Text>
-      </Pressable>
+          <Icon size={22} color="#FFFFFF" />
+        </View>
 
-      {open && (
-        <>
-          <Pressable
-            onPress={() => setOpen(false)}
+        <View className="flex-1">
+          <Text
+            className="text-[12px]"
             style={{
-              position: "absolute",
-              top: -1000,
-              left: -1000,
-              right: -1000,
-              bottom: -1000,
-              backgroundColor: OVERLAY_SCRIM,
-              zIndex: 40,
+              color: GLASS_TEXT,
+              fontFamily: FONT_MED,
+              letterSpacing: 0.4,
             }}
-          />
-          <View
-            className="absolute right-0 top-12 w-44 rounded-[12px] py-1"
-            style={{ backgroundColor: BG, zIndex: 50, ...SHADOW_MD }}
           >
-            <Pressable
-              className="flex-row items-center px-3 py-3"
-              onPress={() => {
-                setOpen(false);
-                onAccount?.();
-              }}
+            {label.toUpperCase()}
+          </Text>
+          <Text
+            className="text-[22px] mt-0.5"
+            style={{ color: "#FFFFFF", fontFamily: FONT_BOLD }}
+          >
+            {name}
+          </Text>
+          {!!subtitle && (
+            <Text
+              className="text-[12px] mt-1"
+              style={{ color: GLASS_TEXT, fontFamily: FONT_REG }}
             >
-              <User size={16} color={TEXT_SECONDARY} />
-              <Text
-                className="text-[13px] ml-2"
-                style={{ color: TEXT_PRIMARY, fontFamily: FONT_MED }}
-              >
-                Account
-              </Text>
-            </Pressable>
-            <Pressable
-              className="flex-row items-center px-3 py-3"
-              onPress={() => {
-                setOpen(false);
-                onSettings?.();
-              }}
-            >
-              <Settings size={16} color={TEXT_SECONDARY} />
-              <Text
-                className="text-[13px] ml-2"
-                style={{ color: TEXT_PRIMARY, fontFamily: FONT_MED }}
-              >
-                Settings
-              </Text>
-            </Pressable>
-            <View
-              style={{ height: 1, backgroundColor: BORDER, marginVertical: 4 }}
-            />
-            <Pressable
-              className="flex-row items-center px-3 py-3"
-              onPress={() => {
-                setOpen(false);
-                onLogout?.();
-              }}
-            >
-              <LogOut size={16} color={DANGER} />
-              <Text
-                className="text-[13px] ml-2"
-                style={{ color: DANGER, fontFamily: FONT_MED }}
-              >
-                Log out
-              </Text>
-            </Pressable>
-          </View>
-        </>
+              {subtitle}
+            </Text>
+          )}
+        </View>
+      </View>
+    </LinearGradient>
+  );
+}
+
+/** Page title block — same rhythm on every screen. */
+export function PageTitle({
+  title,
+  subtitle,
+}: {
+  title: string;
+  subtitle?: string;
+}) {
+  return (
+    <View className="px-4" style={{ marginTop: SPACE_5, marginBottom: SPACE_4 }}>
+      <Text
+        className="text-[26px]"
+        style={{ color: TEXT_PRIMARY, fontFamily: FONT_BOLD }}
+      >
+        {title}
+      </Text>
+      {!!subtitle && (
+        <Text
+          className="text-[13px] mt-1"
+          style={{ color: TEXT_SECONDARY, fontFamily: FONT_REG }}
+        >
+          {subtitle}
+        </Text>
       )}
     </View>
   );
 }
 
+/** Section heading with an optional right-hand link. */
+export function SectionHeading({
+  title,
+  subtitle,
+  actionLabel,
+  onAction,
+}: {
+  title: string;
+  subtitle?: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <View
+      className="flex-row items-start justify-between"
+      style={{ marginBottom: SPACE_3 }}
+    >
+      <View className="flex-1 mr-3">
+        <Text
+          className="text-[17px]"
+          style={{ color: TEXT_PRIMARY, fontFamily: FONT_SEMI }}
+        >
+          {title}
+        </Text>
+        {!!subtitle && (
+          <Text
+            className="text-[12px] mt-1"
+            style={{ color: TEXT_SECONDARY, fontFamily: FONT_REG }}
+          >
+            {subtitle}
+          </Text>
+        )}
+      </View>
+      {!!actionLabel && (
+        <Pressable onPress={onAction}>
+          <Text
+            className="text-[12px] mt-1"
+            style={{ color: GREEN, fontFamily: FONT_SEMI }}
+          >
+            {actionLabel}
+          </Text>
+        </Pressable>
+      )}
+    </View>
+  );
+}
+
+/* ---------------------------------------------------------------- */
+/* Alerts                                                            */
+/* ---------------------------------------------------------------- */
+
+/**
+ * Alert banner. `tone="danger"` renders on the crimson gradient with glass
+ * inner surfaces — the loudest thing the app can show — while "warning" and
+ * "info" stay on solid tinted fills.
+ */
 export function AlertBanner({
   title,
   description,
   actionLabel,
   onAction,
+  tone = "warning",
 }: {
   title: string;
   description: string;
-  actionLabel: string;
+  actionLabel?: string;
   onAction?: () => void;
+  tone?: "warning" | "danger" | "info";
 }) {
-  return (
-    <View
-      className="rounded-[12px] p-4 mb-5"
-      style={{ backgroundColor: WARNING_BG, ...SHADOW_SM }}
-    >
-      <View className="flex-row items-start mb-2">
-        <View
-          className="w-8 h-8 rounded-[999px] items-center justify-center mr-3"
-          style={{ backgroundColor: "rgba(217,119,6,0.16)" }}
-        >
-          <AlertTriangle size={16} color={WARNING} />
+  if (tone === "danger") {
+    return (
+      <LinearGradient
+        colors={GRADIENT_CRIMSON}
+        start={GRADIENT_START}
+        end={GRADIENT_END}
+        style={{
+          borderRadius: 14,
+          padding: 16,
+          marginBottom: SPACE_4,
+          ...SHADOW_MD,
+        }}
+      >
+        <View className="flex-row items-center mb-2.5">
+          <View
+            className="w-9 h-9 rounded-[999px] items-center justify-center mr-3"
+            style={{
+              backgroundColor: GLASS_FILL_STRONG,
+              borderWidth: 1,
+              borderColor: GLASS_BORDER,
+            }}
+          >
+            <AlertTriangle size={17} color="#FFFFFF" />
+          </View>
+          <Text
+            className="flex-1 text-[15px]"
+            style={{ color: "#FFFFFF", fontFamily: FONT_SEMI }}
+          >
+            {title}
+          </Text>
         </View>
         <Text
-          className="flex-1 text-[15px] mt-1"
-          style={{ color: "#92400E", fontFamily: FONT_SEMI }}
+          className="text-[13px] leading-[19px] mb-3.5"
+          style={{ color: GLASS_TEXT, fontFamily: FONT_REG }}
+        >
+          {description}
+        </Text>
+        {!!actionLabel && (
+          <Pressable
+            onPress={onAction}
+            className="self-start px-4 py-2.5 rounded-[999px]"
+            style={{ backgroundColor: "#FFFFFF" }}
+          >
+            <Text
+              className="text-[13px]"
+              style={{ color: DANGER_DARK, fontFamily: FONT_SEMI }}
+            >
+              {actionLabel}
+            </Text>
+          </Pressable>
+        )}
+      </LinearGradient>
+    );
+  }
+
+  const isInfo = tone === "info";
+  const fill = isInfo ? GREEN_TINT : WARNING_BG;
+  const accent = isInfo ? GREEN : WARNING;
+  const titleColor = isInfo ? GREEN_DARK : WARNING_DARK;
+  const Icon = isInfo ? Info : AlertTriangle;
+
+  return (
+    <View
+      className="rounded-[14px] p-4"
+      style={{ backgroundColor: fill, marginBottom: SPACE_4, ...SHADOW_SM }}
+    >
+      <View className="flex-row items-center mb-2.5">
+        <View
+          className="w-9 h-9 rounded-[999px] items-center justify-center mr-3"
+          style={{ backgroundColor: accent }}
+        >
+          <Icon size={17} color="#FFFFFF" />
+        </View>
+        <Text
+          className="flex-1 text-[15px]"
+          style={{ color: titleColor, fontFamily: FONT_SEMI }}
         >
           {title}
         </Text>
       </View>
       <Text
-        className="text-[13px] leading-[19px] mb-3"
+        className="text-[13px] leading-[19px] mb-3.5"
         style={{ color: TEXT_SECONDARY, fontFamily: FONT_REG }}
       >
         {description}
       </Text>
-      <Pressable
-        onPress={onAction}
-        className="self-start px-4 py-2 rounded-[999px]"
-        style={{ backgroundColor: WARNING }}
-      >
-        <Text
-          className="text-[13px]"
-          style={{ color: "#FFFFFF", fontFamily: FONT_SEMI }}
+      {!!actionLabel && (
+        <Pressable
+          onPress={onAction}
+          className="self-start px-4 py-2.5 rounded-[999px]"
+          style={{ backgroundColor: accent }}
         >
-          {actionLabel}
-        </Text>
-      </Pressable>
+          <Text
+            className="text-[13px]"
+            style={{ color: "#FFFFFF", fontFamily: FONT_SEMI }}
+          >
+            {actionLabel}
+          </Text>
+        </Pressable>
+      )}
     </View>
   );
 }
 
-export function BudgetProgress({ percent }: { percent: number }) {
+/* ---------------------------------------------------------------- */
+/* Stat cards                                                        */
+/* ---------------------------------------------------------------- */
+
+export function BudgetProgress({
+  percent,
+  color = WARNING,
+  track = BORDER,
+}: {
+  percent: number;
+  color?: string;
+  track?: string;
+}) {
   return (
     <View
       className="h-[6px] rounded-[999px] mb-4 overflow-hidden"
-      style={{ backgroundColor: BORDER }}
+      style={{ backgroundColor: track }}
     >
       <View
         style={{
-          width: `${Math.min(percent, 100)}%`,
+          width: `${Math.min(Math.max(percent, 0), 100)}%`,
           height: "100%",
-          backgroundColor: WARNING,
+          backgroundColor: color,
           borderRadius: 999,
         }}
       />
@@ -858,6 +1405,7 @@ export function BudgetProgress({ percent }: { percent: number }) {
 
 type MiniStat = { label: string; value: string };
 
+/** Solid-fill stat card. Tones are fully opaque colors — never a translucent tint. */
 export function StatCard({
   title,
   badgeLabel,
@@ -867,8 +1415,6 @@ export function StatCard({
   progressPercent,
   footerStats,
   tone = "neutral",
-  actionLabel,
-  onAction,
 }: {
   title: string;
   badgeLabel?: string;
@@ -878,71 +1424,47 @@ export function StatCard({
   progressPercent?: number;
   footerStats?: MiniStat[];
   tone?: "neutral" | "success" | "danger" | "warning";
-  actionLabel?: string;
-  onAction?: () => void;
 }) {
+  const filled = tone !== "neutral";
+  const cardBg =
+    tone === "success" ? GREEN : tone === "warning" ? WARNING : DANGER;
+
   const badgeColors: Record<string, { bg: string; fg: string }> = {
     positive: { bg: GREEN_TINT, fg: GREEN },
-    warning: { bg: WARNING_BG, fg: WARNING },
-    danger: { bg: "#FFFFFF", fg: DANGER },
+    warning: { bg: WARNING_BG, fg: WARNING_DARK },
+    danger: { bg: DANGER_BG, fg: DANGER },
     neutral: { bg: SURFACE, fg: TEXT_SECONDARY },
   };
   const badge = badgeColors[badgeTone];
-  const isSuccess = tone === "success";
-  const isDanger = tone === "danger";
-  const isWarning = tone === "warning";
-  const isTinted = isSuccess || isWarning;
-
-  const cardBg = isSuccess
-    ? GREEN
-    : isWarning
-      ? WARNING
-      : isDanger
-        ? DANGER_TINT_A
-        : BG;
-  const titleColor = isTinted
-    ? "rgba(255,255,255,0.85)"
-    : isDanger
-      ? DANGER_DARK
-      : TEXT_SECONDARY;
-  const valueColor = isTinted ? "#FFFFFF" : isDanger ? DANGER : TEXT_PRIMARY;
-  const helperColor = isTinted
-    ? "rgba(255,255,255,0.85)"
-    : isDanger
-      ? DANGER_DARK
-      : TEXT_SECONDARY;
 
   return (
     <View
-      className="rounded-[12px] p-5 mb-5"
+      className="rounded-[14px] p-5"
       style={{
-        backgroundColor: cardBg,
-        ...(isTinted || isDanger ? SHADOW_MD : SHADOW_SM),
+        backgroundColor: filled ? cardBg : BG,
+        marginBottom: SPACE_4,
+        ...(filled ? SHADOW_MD : SHADOW_SM),
       }}
     >
       <View className="flex-row items-center justify-between mb-3">
         <Text
           className="text-[13px]"
-          style={{ color: titleColor, fontFamily: FONT_MED }}
+          style={{
+            color: filled ? "rgba(255,255,255,0.88)" : TEXT_SECONDARY,
+            fontFamily: FONT_MED,
+          }}
         >
           {title}
         </Text>
-        {badgeLabel && (
+        {!!badgeLabel && (
           <View
             className="px-2.5 py-1 rounded-[999px]"
-            style={{
-              backgroundColor: isTinted
-                ? "rgba(255,255,255,0.18)"
-                : isDanger
-                  ? "rgba(220,38,38,0.12)"
-                  : badge.bg,
-              ...(isDanger ? SHADOW_SM : null),
-            }}
+            style={{ backgroundColor: filled ? "#FFFFFF" : badge.bg }}
           >
             <Text
               className="text-[11px]"
               style={{
-                color: isTinted ? "#FFFFFF" : isDanger ? DANGER : badge.fg,
+                color: filled ? cardBg : badge.fg,
                 fontFamily: FONT_SEMI,
               }}
             >
@@ -954,34 +1476,40 @@ export function StatCard({
 
       <Text
         className="text-[28px] mb-2"
-        style={{ color: valueColor, fontFamily: FONT_BOLD }}
+        style={{
+          color: filled ? "#FFFFFF" : TEXT_PRIMARY,
+          fontFamily: FONT_BOLD,
+        }}
       >
         {value}
       </Text>
 
-      {helper && (
+      {!!helper && (
         <Text
           className="text-[13px] mb-3"
-          style={{ color: helperColor, fontFamily: FONT_REG }}
+          style={{
+            color: filled ? "rgba(255,255,255,0.88)" : TEXT_SECONDARY,
+            fontFamily: FONT_REG,
+          }}
         >
           {helper}
         </Text>
       )}
 
       {progressPercent !== undefined && (
-        <BudgetProgress percent={progressPercent} />
+        <BudgetProgress
+          percent={progressPercent}
+          color={filled ? "#FFFFFF" : WARNING}
+          track={filled ? "rgba(255,255,255,0.28)" : BORDER}
+        />
       )}
 
-      {footerStats && (
+      {!!footerStats && (
         <View
           className="flex-row justify-between pt-3"
           style={{
             borderTopWidth: 1,
-            borderTopColor: isTinted
-              ? "rgba(255,255,255,0.24)"
-              : isDanger
-                ? "rgba(220,38,38,0.18)"
-                : BORDER,
+            borderTopColor: filled ? "rgba(255,255,255,0.3)" : BORDER,
           }}
         >
           {footerStats.map((stat) => (
@@ -989,7 +1517,7 @@ export function StatCard({
               <Text
                 className="text-[11px] mb-1"
                 style={{
-                  color: isTinted ? "rgba(255,255,255,0.75)" : TEXT_SECONDARY,
+                  color: filled ? "rgba(255,255,255,0.78)" : TEXT_SECONDARY,
                   fontFamily: FONT_MED,
                 }}
               >
@@ -998,7 +1526,7 @@ export function StatCard({
               <Text
                 className="text-[14px]"
                 style={{
-                  color: isTinted ? "#FFFFFF" : TEXT_PRIMARY,
+                  color: filled ? "#FFFFFF" : TEXT_PRIMARY,
                   fontFamily: FONT_SEMI,
                 }}
               >
@@ -1008,34 +1536,24 @@ export function StatCard({
           ))}
         </View>
       )}
-
-      {actionLabel && (
-        <Pressable
-          onPress={onAction}
-          className="flex-row items-center justify-center h-[44px] rounded-[8px] mt-4"
-          style={{ backgroundColor: "#FFFFFF", ...SHADOW_SM }}
-        >
-          <Download size={15} color={GREEN_DARK} />
-          <Text
-            className="text-[14px] ml-2"
-            style={{ color: GREEN_DARK, fontFamily: FONT_SEMI }}
-          >
-            {actionLabel}
-          </Text>
-        </Pressable>
-      )}
     </View>
   );
 }
 
-/** Gradient variant of the hero stat card — same content shape as StatCard, opaque brand gradient fill.
- *  Use in place of StatCard tone="success" when a screen wants the livelier hero treatment. */
+/**
+ * Hero card on a page gradient with glass inner surfaces — the treatment from
+ * the dashboard's KRA liability card, reused as each screen's headline metric.
+ * `rows` renders a glass breakdown list underneath the value.
+ */
 export function GradientStatCard({
   title,
   badgeLabel,
   value,
   helper,
+  rows,
+  footerStats,
   actionLabel,
+  actionIcon,
   onAction,
   colors = GRADIENT_PRIMARY,
 }: {
@@ -1043,64 +1561,114 @@ export function GradientStatCard({
   badgeLabel?: string;
   value: string;
   helper?: string;
+  rows?: MiniStat[];
+  footerStats?: MiniStat[];
   actionLabel?: string;
+  actionIcon?: ReactNode;
   onAction?: () => void;
-  colors?: [string, string, ...string[]];
+  colors?: Gradient;
 }) {
   return (
     <LinearGradient
       colors={colors}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
+      start={GRADIENT_START}
+      end={GRADIENT_END}
       style={{
-        borderRadius: 12,
+        borderRadius: 16,
         padding: 20,
-        marginBottom: SPACE_5,
+        marginBottom: SPACE_4,
         ...SHADOW_MD,
       }}
     >
       <View className="flex-row items-center justify-between mb-3">
         <Text
-          className="text-[13px]"
-          style={{ color: "rgba(255,255,255,0.85)", fontFamily: FONT_MED }}
+          className="text-[13px] flex-1 mr-2"
+          style={{ color: GLASS_TEXT, fontFamily: FONT_MED }}
         >
           {title}
         </Text>
-        {badgeLabel && (
-          <View
-            className="px-2.5 py-1 rounded-[999px]"
-            style={{ backgroundColor: "rgba(255,255,255,0.18)" }}
-          >
-            <Text
-              className="text-[11px]"
-              style={{ color: "#FFFFFF", fontFamily: FONT_SEMI }}
-            >
-              {badgeLabel}
-            </Text>
-          </View>
-        )}
+        {!!badgeLabel && <GlassBadge label={badgeLabel} />}
       </View>
+
       <Text
-        className="text-[28px] mb-2"
+        className="text-[30px] mb-2"
         style={{ color: "#FFFFFF", fontFamily: FONT_BOLD }}
       >
         {value}
       </Text>
-      {helper && (
+
+      {!!helper && (
         <Text
-          className="text-[13px] mb-3"
-          style={{ color: "rgba(255,255,255,0.85)", fontFamily: FONT_REG }}
+          className="text-[13px]"
+          style={{ color: GLASS_TEXT, fontFamily: FONT_REG }}
         >
           {helper}
         </Text>
       )}
-      {actionLabel && (
+
+      {!!rows?.length && (
+        <GlassPanel style={{ marginTop: SPACE_3, padding: 4 }}>
+          {rows.map((row, i) => (
+            <View
+              key={row.label}
+              className="flex-row items-center justify-between px-3 py-2.5"
+              style={{
+                borderTopWidth: i === 0 ? 0 : 1,
+                borderTopColor: GLASS_BORDER,
+              }}
+            >
+              <Text
+                className="text-[12px]"
+                style={{ color: GLASS_TEXT, fontFamily: FONT_MED }}
+              >
+                {row.label}
+              </Text>
+              <Text
+                className="text-[13px]"
+                style={{ color: "#FFFFFF", fontFamily: FONT_SEMI }}
+              >
+                {row.value}
+              </Text>
+            </View>
+          ))}
+        </GlassPanel>
+      )}
+
+      {!!footerStats?.length && (
+        <View
+          className="flex-row justify-between pt-3"
+          style={{
+            marginTop: SPACE_3,
+            borderTopWidth: 1,
+            borderTopColor: GLASS_BORDER,
+          }}
+        >
+          {footerStats.map((stat) => (
+            <View key={stat.label}>
+              <Text
+                className="text-[11px] mb-1"
+                style={{ color: GLASS_TEXT_DIM, fontFamily: FONT_MED }}
+              >
+                {stat.label}
+              </Text>
+              <Text
+                className="text-[14px]"
+                style={{ color: "#FFFFFF", fontFamily: FONT_SEMI }}
+              >
+                {stat.value}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {!!actionLabel && (
         <Pressable
           onPress={onAction}
-          className="flex-row items-center justify-center h-[44px] rounded-[8px] mt-2"
-          style={{ backgroundColor: "#FFFFFF" }}
+          className="flex-row items-center justify-center h-[46px] rounded-[10px]"
+          style={{ backgroundColor: "#FFFFFF", marginTop: SPACE_3 }}
         >
-          <Download size={15} color={GREEN_DARK} />
+          {actionIcon ?? <Download size={15} color={GREEN_DARK} />}
           <Text
             className="text-[14px] ml-2"
             style={{ color: GREEN_DARK, fontFamily: FONT_SEMI }}
@@ -1113,6 +1681,104 @@ export function GradientStatCard({
   );
 }
 
+/** White card wrapper for row lists — kra liability, reports breakdown, etc. */
+export function DataCard({
+  children,
+  title,
+  subtitle,
+}: {
+  children: ReactNode;
+  title?: string;
+  subtitle?: string;
+}) {
+  return (
+    <View
+      className="rounded-[14px] p-5"
+      style={{ backgroundColor: BG, marginBottom: SPACE_4, ...SHADOW_SM }}
+    >
+      {!!title && (
+        <Text
+          className="text-[16px] mb-1"
+          style={{ color: TEXT_PRIMARY, fontFamily: FONT_SEMI }}
+        >
+          {title}
+        </Text>
+      )}
+      {!!subtitle && (
+        <Text
+          className="text-[12px] mb-3"
+          style={{ color: TEXT_SECONDARY, fontFamily: FONT_REG }}
+        >
+          {subtitle}
+        </Text>
+      )}
+      {children}
+    </View>
+  );
+}
+
+/** Label / detail / value row used inside DataCard. */
+export function DataRow({
+  label,
+  detail,
+  value,
+  first,
+  accent,
+  emphasis,
+}: {
+  label: string;
+  detail?: string;
+  value: string;
+  first?: boolean;
+  accent?: string;
+  emphasis?: boolean;
+}) {
+  return (
+    <View
+      className="flex-row items-center justify-between py-3"
+      style={{ borderTopWidth: first ? 0 : 1, borderTopColor: BORDER }}
+    >
+      <View className="flex-row items-center flex-1 mr-3">
+        {!!accent && (
+          <View
+            className="w-2.5 h-2.5 rounded-[999px] mr-3"
+            style={{ backgroundColor: accent }}
+          />
+        )}
+        <View className="flex-1">
+          <Text
+            className="text-[13px]"
+            style={{ color: TEXT_PRIMARY, fontFamily: FONT_SEMI }}
+          >
+            {label}
+          </Text>
+          {!!detail && (
+            <Text
+              className="text-[12px] mt-0.5"
+              style={{ color: TEXT_SECONDARY, fontFamily: FONT_REG }}
+            >
+              {detail}
+            </Text>
+          )}
+        </View>
+      </View>
+      <Text
+        className={emphasis ? "text-[18px]" : "text-[14px]"}
+        style={{
+          color: emphasis ? GREEN : TEXT_PRIMARY,
+          fontFamily: emphasis ? FONT_BOLD : FONT_SEMI,
+        }}
+      >
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+/* ---------------------------------------------------------------- */
+/* Pills, rows and tabs                                              */
+/* ---------------------------------------------------------------- */
+
 export function StatusPill({
   label,
   tone,
@@ -1121,9 +1787,9 @@ export function StatusPill({
   tone: "positive" | "warning" | "neutral" | "danger";
 }) {
   const toneColors: Record<string, { bg: string; fg: string }> = {
-    positive: { bg: GREEN_TINT_A, fg: GREEN },
-    warning: { bg: "rgba(217,119,6,0.12)", fg: WARNING },
-    danger: { bg: DANGER_TINT_A, fg: DANGER },
+    positive: { bg: GREEN_TINT, fg: GREEN },
+    warning: { bg: WARNING_BG, fg: WARNING_DARK },
+    danger: { bg: DANGER_BG, fg: DANGER },
     neutral: { bg: SURFACE, fg: TEXT_SECONDARY },
   };
   const c = toneColors[tone];
@@ -1152,7 +1818,7 @@ export type Transaction = {
   source: string;
   sourceTone: "positive" | "warning" | "neutral";
   status: string;
-  statusTone: "positive" | "warning" | "neutral";
+  statusTone: "positive" | "warning" | "neutral" | "danger";
   amount: string;
   isNegative?: boolean;
 };
@@ -1180,11 +1846,11 @@ export function TransactionRow({
         <Text
           className="text-[14px]"
           style={{
-            color: tx.isNegative ? TEXT_PRIMARY : GREEN,
+            color: tx.isNegative ? DANGER : GREEN,
             fontFamily: FONT_SEMI,
           }}
         >
-          {tx.isNegative ? "-" : ""}
+          {tx.isNegative ? "-" : "+"}
           {tx.amount}
         </Text>
       </View>
@@ -1207,7 +1873,8 @@ export type Invoice = {
   customer: string;
   reference: string;
   dueDate: string;
-  statusLabel: "";
+  /** Human-readable timing note, e.g. "Due in 14 days" or "11 days overdue". */
+  statusLabel: string;
   amount: string;
   status: "pending" | "overdue" | "paid";
 };
@@ -1235,6 +1902,8 @@ export function InvoiceRow({
   onPress?: () => void;
 }) {
   const initial = invoice.customer.trim().charAt(0).toUpperCase();
+  const tone = INVOICE_STATUS_TONE[invoice.status];
+
   return (
     <Pressable
       onPress={onPress}
@@ -1243,11 +1912,16 @@ export function InvoiceRow({
     >
       <View
         className="w-10 h-10 rounded-[999px] items-center justify-center mr-3"
-        style={{ backgroundColor: GREEN_TINT_A }}
+        style={{
+          backgroundColor: tone === "danger" ? DANGER_BG : GREEN_TINT,
+        }}
       >
         <Text
           className="text-[14px]"
-          style={{ color: GREEN, fontFamily: FONT_SEMI }}
+          style={{
+            color: tone === "danger" ? DANGER : GREEN,
+            fontFamily: FONT_SEMI,
+          }}
         >
           {initial}
         </Text>
@@ -1261,33 +1935,25 @@ export function InvoiceRow({
           {invoice.customer}
         </Text>
         <Text
-          className="text-[12px]"
+          className="text-[12px] mb-1.5"
           style={{ color: TEXT_SECONDARY, fontFamily: FONT_REG }}
         >
-          {invoice.reference} · Due {invoice.dueDate}
+          {invoice.reference} · {invoice.statusLabel}
         </Text>
+        <View className="flex-row">
+          <StatusPill label={INVOICE_STATUS_LABEL[invoice.status]} tone={tone} />
+        </View>
       </View>
 
-      <View className="items-end mr-2">
+      <View className="items-end">
         <Text
-          className="text-[12px] mb-1"
-          style={{ color: TEXT_SECONDARY, fontFamily: FONT_REG }}
-        >
-          {invoice.statusLabel}
-        </Text>
-        <Text
-          className="text-[15px] mb-1.5"
+          className="text-[15px]"
           style={{ color: TEXT_PRIMARY, fontFamily: FONT_BOLD }}
         >
           {invoice.amount}
         </Text>
-        <StatusPill
-          label={INVOICE_STATUS_LABEL[invoice.status]}
-          tone={INVOICE_STATUS_TONE[invoice.status]}
-        />
+        <ChevronRight size={16} color={TEXT_SECONDARY} />
       </View>
-
-      <ChevronRight size={16} color={TEXT_SECONDARY} />
     </Pressable>
   );
 }
@@ -1303,8 +1969,8 @@ export function PillTabs({
 }) {
   return (
     <View
-      className="flex-row self-start rounded-[999px] p-1 mb-5"
-      style={{ backgroundColor: BG, ...SHADOW_SM }}
+      className="flex-row self-start rounded-[999px] p-1"
+      style={{ backgroundColor: BG, marginBottom: SPACE_4, ...SHADOW_SM }}
     >
       {options.map((opt) => {
         const active = opt === value;
@@ -1331,7 +1997,7 @@ export function PillTabs({
   );
 }
 
-/** Generic segmented tabs for {label,value} option objects (e.g. form Type/Source pickers). */
+/** Segmented tabs for {label,value} option objects (e.g. form pickers). */
 export function SegmentedTabs<T extends string>({
   options,
   value,
@@ -1384,7 +2050,7 @@ export function FilterChips({
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      className="mb-5"
+      style={{ marginBottom: SPACE_3 }}
       contentContainerStyle={{ paddingRight: 8, paddingVertical: SPACE_2 }}
     >
       {options.map((opt) => {
@@ -1415,21 +2081,23 @@ export function FilterChips({
   );
 }
 
-/** White form card — same treatment as the login/register screens' FormCard, reused for Add Transaction etc. */
+/** White form card — used by Add Transaction and the auth screens. */
 export function FormCard({ children }: { children: ReactNode }) {
   return (
-    <View className="rounded-[24px] bg-white p-5 mb-6" style={SHADOW_MD}>
+    <View
+      className="rounded-[18px] p-5"
+      style={{ backgroundColor: BG, ...SHADOW_MD }}
+    >
       {children}
     </View>
   );
 }
 
-/** Inline error banner — same treatment as the auth screens' ErrorBanner. */
 export function ErrorBanner({ message }: { message: string }) {
   return (
     <View
-      className="rounded-[14px] px-3 py-2 mb-4"
-      style={{ backgroundColor: DANGER_BG, ...SHADOW_SM }}
+      className="rounded-[12px] px-3 py-2.5 mb-4"
+      style={{ backgroundColor: DANGER_BG }}
     >
       <Text style={{ color: DANGER, fontFamily: FONT_MED, fontSize: 13 }}>
         {message}
@@ -1438,14 +2106,10 @@ export function ErrorBanner({ message }: { message: string }) {
   );
 }
 
-/** Fire-and-forget confirmation, e.g. "Transaction saved". No extra native dependency. */
-export function showToast(message: string) {
-  console.log("[toast]", message);
-}
-
-/** Label/value row with optional avatar-style initials and a trailing status pill — Settings integrations, Suppliers, KRA lists. */
+/** Avatar + title/subtitle + trailing pill — Settings integrations, Suppliers, KRA lists. */
 export function InfoRow({
   initials,
+  icon,
   title,
   subtitle,
   trailingLabel,
@@ -1453,6 +2117,7 @@ export function InfoRow({
   onPress,
 }: {
   initials?: string;
+  icon?: ReactNode;
   title: string;
   subtitle: string;
   trailingLabel?: string;
@@ -1465,17 +2130,19 @@ export function InfoRow({
       className="flex-row items-center rounded-[12px] p-4 mb-3"
       style={{ backgroundColor: BG, ...SHADOW_SM }}
     >
-      {initials && (
+      {(!!initials || !!icon) && (
         <View
           className="w-10 h-10 rounded-[10px] items-center justify-center mr-3"
-          style={{ backgroundColor: GREEN_TINT_A }}
+          style={{ backgroundColor: GREEN_TINT }}
         >
-          <Text
-            className="text-[13px]"
-            style={{ color: GREEN, fontFamily: FONT_SEMI }}
-          >
-            {initials}
-          </Text>
+          {icon ?? (
+            <Text
+              className="text-[13px]"
+              style={{ color: GREEN, fontFamily: FONT_SEMI }}
+            >
+              {initials}
+            </Text>
+          )}
         </View>
       )}
       <View className="flex-1 mr-2">
@@ -1492,37 +2159,35 @@ export function InfoRow({
           {subtitle}
         </Text>
       </View>
-      {trailingLabel && (
+      {!!trailingLabel && (
         <StatusPill label={trailingLabel} tone={trailingTone} />
       )}
     </Pressable>
   );
 }
 
-export type NavKey = "dashboard" | "sales" | "kra" | "more";
+/* ---------------------------------------------------------------- */
+/* Bottom navigation — shared by every screen, driven by APP_ROUTES.  */
+/* ---------------------------------------------------------------- */
 
-export type MoreRoute = {
-  key: string;
-  label: string;
-  icon: (color: string) => ReactNode;
-  onPress: () => void;
-};
-
-/** Bottom sheet listing every route not pinned to the tab bar (Inventory, Payroll, Suppliers, Reports, Settings). */
+/** Bottom sheet listing every route not pinned to the tab bar. */
 export function MoreSheet({
   visible,
   onClose,
-  routes,
+  routes = MORE_ROUTES,
 }: {
   visible: boolean;
   onClose: () => void;
-  routes: MoreRoute[];
+  routes?: NavRoute[];
 }) {
+  const router = useRouter();
+  const activeKey = useActiveRouteKey();
+
   return (
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType="slide"
       onRequestClose={onClose}
     >
       <Pressable
@@ -1535,147 +2200,222 @@ export function MoreSheet({
       >
         <Pressable
           onPress={(e) => e.stopPropagation()}
-          className="rounded-t-[20px] px-2 pt-3 pb-8"
+          className="rounded-t-[22px] px-2 pt-3 pb-9"
           style={{ backgroundColor: BG, ...SHADOW_MD }}
         >
           <View
-            className="self-center rounded-[999px] mb-4"
-            style={{ width: 36, height: 4, backgroundColor: BORDER }}
+            className="self-center rounded-[999px] mb-3"
+            style={{ width: 40, height: 4, backgroundColor: BORDER }}
           />
-          {routes.map((r, i) => (
-            <Pressable
-              key={r.key}
-              onPress={() => {
-                onClose();
-                r.onPress();
-              }}
-              className="flex-row items-center px-4 py-4"
-              style={{
-                borderTopWidth: i === 0 ? 0 : 1,
-                borderTopColor: BORDER,
-              }}
-            >
-              <View
-                className="w-9 h-9 rounded-[10px] items-center justify-center mr-3"
-                style={{ backgroundColor: GREEN_TINT_A }}
+          <Text
+            className="text-[12px] px-4 mb-1"
+            style={{
+              color: TEXT_SECONDARY,
+              fontFamily: FONT_MED,
+              letterSpacing: 0.4,
+            }}
+          >
+            ALL SECTIONS
+          </Text>
+
+          {routes.map((r) => {
+            const active = r.key === activeKey;
+            return (
+              <Pressable
+                key={r.key}
+                onPress={() => {
+                  onClose();
+                  if (!active) router.replace(r.href as never);
+                }}
+                className="flex-row items-center px-4 py-3.5"
               >
-                {r.icon(GREEN)}
-              </View>
-              <Text
-                className="text-[14px]"
-                style={{ color: TEXT_PRIMARY, fontFamily: FONT_MED }}
-              >
-                {r.label}
-              </Text>
-            </Pressable>
-          ))}
+                <View
+                  className="w-10 h-10 rounded-[12px] items-center justify-center mr-3"
+                  style={{ backgroundColor: active ? GREEN : GREEN_TINT }}
+                >
+                  {r.icon(active ? "#FFFFFF" : GREEN, 19)}
+                </View>
+                <Text
+                  className="flex-1 text-[14px]"
+                  style={{
+                    color: active ? GREEN : TEXT_PRIMARY,
+                    fontFamily: active ? FONT_SEMI : FONT_MED,
+                  }}
+                >
+                  {r.label}
+                </Text>
+                <ChevronRight size={16} color={TEXT_SECONDARY} />
+              </Pressable>
+            );
+          })}
         </Pressable>
       </Pressable>
     </Modal>
   );
 }
 
-/** Bottom tab bar — Dashboard / Sales / KRA / More. `badge` shows a small red count (e.g. pending KRA filings). */
+/**
+ * The app's bottom tab bar: four pinned sections plus More, which opens a sheet
+ * with everything else. It reads APP_ROUTES and the current pathname itself, so
+ * a new screen only has to render <BottomNav /> — no props, no per-page config.
+ */
 export function BottomNav({
   active,
-  onChange,
   onAdd,
-  navItems,
+  tabs = TAB_ROUTES,
 }: {
-  active: NavKey;
-  onChange: (key: NavKey) => void;
+  /** Optional override; by default the active tab comes from the pathname. */
+  active?: NavKey;
   onAdd?: () => void;
-  navItems: {
-    key: NavKey;
-    label: string;
-    icon: (color: string) => ReactNode;
-    badge?: number;
-  }[];
+  tabs?: NavRoute[];
 }) {
-  return (
-    <View
-      className="absolute bottom-0 left-0 right-0"
-      style={{
-        backgroundColor: BG,
-        height: 78,
-        ...SHADOW_MD,
-        shadowOffset: { width: 0, height: -4 },
-      }}
-    >
-      <View
-        className="flex-1 flex-row items-center justify-around pt-2"
-        style={{ paddingBottom: 24 }}
-      >
-        {navItems.map((item) => {
-          const isActive = item.key === active;
-          const color = isActive ? GREEN : TEXT_SECONDARY;
-          return (
-            <Pressable
-              key={item.key}
-              onPress={() => onChange(item.key)}
-              className="items-center justify-center flex-1"
-            >
-              <View
-                className="items-center justify-center rounded-[999px] mb-0.5"
-                style={{
-                  width: 36,
-                  height: 28,
-                  backgroundColor: isActive ? GREEN_TINT_A : "transparent",
-                }}
-              >
-                {item.icon(color)}
-                {!!item.badge && (
-                  <View
-                    className="absolute -top-1 -right-1 rounded-[999px] items-center justify-center"
-                    style={{
-                      minWidth: 15,
-                      height: 15,
-                      paddingHorizontal: 3,
-                      backgroundColor: DANGER,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        color: "#FFFFFF",
-                        fontSize: 9,
-                        fontFamily: FONT_SEMI,
-                      }}
-                    >
-                      {item.badge}
-                    </Text>
-                  </View>
-                )}
-              </View>
-              <Text
-                className="text-[10px] mt-0.5"
-                style={{ color, fontFamily: isActive ? FONT_SEMI : FONT_MED }}
-                numberOfLines={1}
-              >
-                {item.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+  const router = useRouter();
+  const derived = useActiveRouteKey();
+  const activeKey = active ?? derived;
+  const [moreVisible, setMoreVisible] = useState(false);
 
-      <Pressable
-        onPress={onAdd}
-        className="absolute items-center justify-center w-14 h-14 rounded-[999px]"
+  const inMoreSheet = MORE_ROUTES.some((r) => r.key === activeKey);
+
+  const items: {
+    key: string;
+    label: string;
+    icon: (color: string, size?: number) => ReactNode;
+    badge?: number;
+    active: boolean;
+    onPress: () => void;
+  }[] = [
+    ...tabs.map((r) => ({
+      key: r.key,
+      label: r.label,
+      icon: r.icon,
+      badge: r.badge,
+      active: r.key === activeKey,
+      onPress: () => {
+        if (r.key !== activeKey) router.replace(r.href as never);
+      },
+    })),
+    {
+      key: "more",
+      label: "More",
+      icon: (c: string, s = 20) => <MoreHorizontal size={s} color={c} />,
+      active: inMoreSheet || moreVisible,
+      onPress: () => setMoreVisible(true),
+    },
+  ];
+
+  return (
+    <>
+      <View
+        className="absolute bottom-0 left-0 right-0"
         style={{
-          backgroundColor: GREEN,
-          right: 18,
-          top: -50,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.28,
-          shadowRadius: 10,
-          elevation: 8,
+          backgroundColor: BG,
+          height: 78,
+          borderTopWidth: 1,
+          borderTopColor: BORDER,
+          ...SHADOW_MD,
+          shadowOffset: { width: 0, height: -4 },
         }}
       >
-        <Text style={{ color: "#FFFFFF", fontSize: 26, fontFamily: FONT_SEMI }}>
-          +
-        </Text>
+        <View
+          className="flex-1 flex-row items-center pt-2"
+          style={{ paddingBottom: 22 }}
+        >
+          {items.map((item) => {
+            const color = item.active ? GREEN : TEXT_SECONDARY;
+            return (
+              <Pressable
+                key={item.key}
+                onPress={item.onPress}
+                className="items-center justify-center flex-1"
+              >
+                <View
+                  className="items-center justify-center rounded-[999px]"
+                  style={{
+                    width: 42,
+                    height: 28,
+                    backgroundColor: item.active ? GREEN_TINT : "transparent",
+                  }}
+                >
+                  {item.icon(color, 19)}
+                  {!!item.badge && (
+                    <View
+                      className="absolute rounded-[999px] items-center justify-center"
+                      style={{
+                        top: -3,
+                        right: 1,
+                        minWidth: 16,
+                        height: 16,
+                        paddingHorizontal: 3,
+                        backgroundColor: DANGER,
+                        borderWidth: 1.5,
+                        borderColor: BG,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: "#FFFFFF",
+                          fontSize: 9,
+                          fontFamily: FONT_BOLD,
+                        }}
+                      >
+                        {item.badge}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                <Text
+                  className="text-[10px] mt-1"
+                  style={{
+                    color,
+                    fontFamily: item.active ? FONT_SEMI : FONT_MED,
+                  }}
+                  numberOfLines={1}
+                >
+                  {item.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+
+      {/* Quick-add FAB — floats above the bar so it clears the tab labels. */}
+      <Pressable
+        onPress={onAdd ?? (() => router.push(ADD_TRANSACTION_HREF as never))}
+        className="absolute items-center justify-center"
+        style={{ right: 18, bottom: 90, borderRadius: 999, ...SHADOW_MD }}
+      >
+        <LinearGradient
+          colors={GRADIENT_PRIMARY}
+          start={GRADIENT_START}
+          end={GRADIENT_END}
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: 999,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Text
+            style={{ color: "#FFFFFF", fontSize: 28, fontFamily: FONT_REG }}
+          >
+            +
+          </Text>
+        </LinearGradient>
       </Pressable>
-    </View>
+
+      <MoreSheet
+        visible={moreVisible}
+        onClose={() => setMoreVisible(false)}
+        routes={MORE_ROUTES}
+      />
+    </>
   );
 }
+
+/** Height to leave clear at the bottom of a ScrollView so the nav never overlaps content. */
+export const NAV_CLEARANCE = 150;
+
+/** Re-exported so screens can build icon rows without a second lucide import. */
+export { Boxes, Package, Truck, Users };

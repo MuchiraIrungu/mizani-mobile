@@ -1,50 +1,41 @@
 import { useRouter } from "expo-router";
-import { ChevronLeft, X } from "lucide-react-native";
+import { Check, ChevronLeft, X } from "lucide-react-native";
 import { useState } from "react";
 import {
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    Text,
-    TextInput,
-    View,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
-    BG,
-    BORDER,
-    GREEN,
-    PillTabs,
-    PrimaryButton,
-    SHADOW_MD,
-    SPACE_4,
-    SURFACE,
-    TEXT_PRIMARY,
-    TEXT_SECONDARY,
+  BG,
+  BORDER,
+  ErrorBanner,
+  FONT_MED,
+  FONT_REG,
+  FONT_SEMI,
+  FormCard,
+  GRADIENT_FOREST,
+  GREEN,
+  PillTabs,
+  PrimaryButton,
+  SHADOW_SM,
+  showToast,
+  SPACE_4,
+  SURFACE,
+  TEXT_PRIMARY,
+  TEXT_SECONDARY,
 } from "../../components/dashboard/dashboardUI";
 
-const FONT_REG = "Lexend_400Regular";
-const FONT_MED = "Lexend_500Medium";
-const FONT_SEMI = "Lexend_600SemiBold";
-const FONT_BOLD = "Lexend_700Bold";
+/* Add Transaction — quick-entry form behind the bottom nav's "+" button. */
 
 const TRANSACTION_TYPES = ["Sale", "Purchase", "Expense"];
 const PAYMENT_SOURCES = ["M-Pesa", "Bank", "Cash"];
-
-/** White card wrapper — same shadow/radius language as the rest of the
- *  dashboard (StatCard, InvoiceRow), not the auth screen's rounder card. */
-function FormCard({ children }: { children: React.ReactNode }) {
-  return (
-    <View
-      className="rounded-[16px] bg-white p-5"
-      style={{ backgroundColor: BG, ...SHADOW_MD }}
-    >
-      {children}
-    </View>
-  );
-}
 
 function FieldLabel({ label }: { label: string }) {
   return (
@@ -76,12 +67,13 @@ export default function AddTransactionScreen() {
     }
     setError(null);
     // TODO: wire up to the real create-transaction endpoint.
-    // For now this just confirms the form works end-to-end.
+    showToast(`${type} of KSh ${amount} saved`);
     router.back();
   };
 
   const inputStyle = (field: string) => ({
     borderColor: focusedField === field ? GREEN : BORDER,
+    borderWidth: 1,
   });
 
   return (
@@ -90,12 +82,11 @@ export default function AddTransactionScreen() {
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        {/* ---- Header ---- */}
         <View className="flex-row items-center justify-between px-4 py-3">
           <Pressable
             onPress={() => router.back()}
-            className="w-9 h-9 rounded-[999px] items-center justify-center"
-            style={{ backgroundColor: BG, ...SHADOW_MD }}
+            className="w-10 h-10 rounded-[999px] items-center justify-center"
+            style={{ backgroundColor: BG, ...SHADOW_SM }}
           >
             <ChevronLeft size={18} color={TEXT_PRIMARY} />
           </Pressable>
@@ -107,8 +98,8 @@ export default function AddTransactionScreen() {
           </Text>
           <Pressable
             onPress={() => router.back()}
-            className="w-9 h-9 rounded-[999px] items-center justify-center"
-            style={{ backgroundColor: BG, ...SHADOW_MD }}
+            className="w-10 h-10 rounded-[999px] items-center justify-center"
+            style={{ backgroundColor: BG, ...SHADOW_SM }}
           >
             <X size={18} color={TEXT_SECONDARY} />
           </Pressable>
@@ -116,26 +107,15 @@ export default function AddTransactionScreen() {
 
         <ScrollView
           className="flex-1"
-          contentContainerStyle={{ padding: SPACE_4, paddingBottom: 40 }}
+          contentContainerStyle={{ padding: SPACE_4, paddingBottom: 48 }}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
           <FormCard>
-            {error && (
-              <View
-                className="rounded-[12px] px-3 py-2 mb-4"
-                style={{ backgroundColor: "#FDECEC" }}
-              >
-                <Text
-                  className="text-[13px]"
-                  style={{ color: "#DC2626", fontFamily: FONT_MED }}
-                >
-                  {error}
-                </Text>
-              </View>
-            )}
+            {!!error && <ErrorBanner message={error} />}
 
             <FieldLabel label="Transaction type" />
-            <View className="mb-5">
+            <View className="mb-2">
               <PillTabs
                 options={TRANSACTION_TYPES}
                 value={type}
@@ -152,8 +132,9 @@ export default function AddTransactionScreen() {
               placeholder="0.00"
               placeholderTextColor={TEXT_SECONDARY}
               keyboardType="numeric"
-              className="h-[52px] px-4 rounded-[14px] border bg-white text-[15px] mb-5"
+              className="h-[52px] px-4 rounded-[12px] text-[15px] mb-5"
               style={{
+                backgroundColor: BG,
                 color: TEXT_PRIMARY,
                 fontFamily: FONT_REG,
                 ...inputStyle("amount"),
@@ -161,7 +142,7 @@ export default function AddTransactionScreen() {
             />
 
             <FieldLabel label="Payment source" />
-            <View className="mb-5">
+            <View className="mb-2">
               <PillTabs
                 options={PAYMENT_SOURCES}
                 value={source}
@@ -177,8 +158,9 @@ export default function AddTransactionScreen() {
               onBlur={() => setFocusedField(null)}
               placeholder="e.g. Sales, Purchases, Payroll"
               placeholderTextColor={TEXT_SECONDARY}
-              className="h-[52px] px-4 rounded-[14px] border bg-white text-[15px] mb-5"
+              className="h-[52px] px-4 rounded-[12px] text-[15px] mb-5"
               style={{
+                backgroundColor: BG,
                 color: TEXT_PRIMARY,
                 fontFamily: FONT_REG,
                 ...inputStyle("category"),
@@ -194,8 +176,9 @@ export default function AddTransactionScreen() {
               placeholder="e.g. INV-2045"
               placeholderTextColor={TEXT_SECONDARY}
               autoCapitalize="characters"
-              className="h-[52px] px-4 rounded-[14px] border bg-white text-[15px] mb-5"
+              className="h-[52px] px-4 rounded-[12px] text-[15px] mb-5"
               style={{
+                backgroundColor: BG,
                 color: TEXT_PRIMARY,
                 fontFamily: FONT_REG,
                 ...inputStyle("reference"),
@@ -213,8 +196,9 @@ export default function AddTransactionScreen() {
               multiline
               numberOfLines={3}
               textAlignVertical="top"
-              className="px-4 py-3 rounded-[14px] border bg-white text-[15px] mb-6"
+              className="px-4 py-3 rounded-[12px] text-[15px] mb-6"
               style={{
+                backgroundColor: BG,
                 color: TEXT_PRIMARY,
                 fontFamily: FONT_REG,
                 minHeight: 88,
@@ -222,7 +206,12 @@ export default function AddTransactionScreen() {
               }}
             />
 
-            <PrimaryButton label="Save transaction" onPress={handleSave} />
+            <PrimaryButton
+              label="Save transaction"
+              icon={<Check size={16} color="#FFFFFF" />}
+              onPress={handleSave}
+              colors={GRADIENT_FOREST}
+            />
           </FormCard>
         </ScrollView>
       </KeyboardAvoidingView>

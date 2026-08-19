@@ -1,3 +1,10 @@
+import {
+  Lexend_400Regular,
+  Lexend_500Medium,
+  Lexend_600SemiBold,
+  Lexend_700Bold,
+  useFonts,
+} from "@expo-google-fonts/lexend";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Stack, useRootNavigationState, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -11,10 +18,18 @@ export default function RootLayout() {
     null,
   );
 
+  // Every screen styles text with Lexend, so all four weights load once here.
+  const [fontsLoaded] = useFonts({
+    Lexend_400Regular,
+    Lexend_500Medium,
+    Lexend_600SemiBold,
+    Lexend_700Bold,
+  });
+
   useEffect(() => {
     const checkOnboarding = async () => {
-      // 🛠️ DEV ONLY: Uncomment the line below once to clear the saved flag and see onboarding again!
-      await AsyncStorage.removeItem("hasSeenOnboarding");
+      // 🛠️ DEV ONLY: uncomment to clear the flag and see onboarding again.
+      // await AsyncStorage.removeItem("hasSeenOnboarding");
 
       const seen = await AsyncStorage.getItem("hasSeenOnboarding");
       setHasSeenOnboarding(seen === "true");
@@ -32,11 +47,11 @@ export default function RootLayout() {
     }
   }, [hasSeenOnboarding, navigationState?.key, router]);
 
-  // Prevent flash of screen content while reading AsyncStorage
-  if (hasSeenOnboarding === null) {
+  // Prevent a flash of unstyled content while fonts and the flag load.
+  if (hasSeenOnboarding === null || !fontsLoaded) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color="#0A5C36" />
       </View>
     );
   }

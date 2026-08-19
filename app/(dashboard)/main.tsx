@@ -1,40 +1,37 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { ScrollView, StatusBar, Text, View } from "react-native";
+import { ScrollView, StatusBar, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
-    AlertBanner,
-    BottomNav,
-    BrandMark,
-    FilterChips,
-    GRADIENT_PRIMARY,
-    GradientStatCard,
-    GREEN,
-    GreetingBanner,
-    NotificationBell,
-    PillRow,
-    SearchModal,
-    SearchTrigger,
-    SelectorPill,
-    showToast,
-    SPACE_4,
-    SPACE_5,
-    StatCard,
-    SURFACE,
-    TEXT_PRIMARY,
-    TEXT_SECONDARY,
-    //ToastHost,
-    TransactionRow,
-    UserMenu,
-    type NotificationItem,
-    type SearchItem,
-    type Transaction,
+  AlertBanner,
+  AppHeader,
+  BottomNav,
+  FilterChips,
+  GradientStatCard,
+  GRADIENT_FOREST,
+  GreetingBanner,
+  NAV_CLEARANCE,
+  PageTitle,
+  PillRow,
+  SearchModal,
+  SearchTrigger,
+  SectionHeading,
+  SelectorPill,
+  showToast,
+  SPACE_3,
+  SPACE_4,
+  StatCard,
+  SURFACE,
+  ToastHost,
+  TransactionRow,
+  type NotificationItem,
+  type SearchItem,
+  type Transaction,
 } from "../../components/dashboard/dashboardUI";
 
-const FONT_REG = "Lexend_400Regular";
-const FONT_SEMI = "Lexend_600SemiBold";
-const FONT_BOLD = "Lexend_700Bold";
+/* Dashboard — greeting, KRA alert, revenue/cost/liability headline cards and
+   the most recent transactions. */
 
 const TRANSACTIONS: Transaction[] = [
   {
@@ -61,7 +58,7 @@ const TRANSACTIONS: Transaction[] = [
     sourceTone: "neutral",
     status: "Compliant",
     statusTone: "positive",
-    amount: "46,000",
+    amount: "KSh 46,000",
     isNegative: true,
   },
   {
@@ -81,7 +78,7 @@ const TRANSACTIONS: Transaction[] = [
 
 const SOURCE_FILTERS = ["All sources", "M-Pesa", "Bank", "Cash"];
 
-const MOCK_NOTIFICATIONS: NotificationItem[] = [
+const NOTIFICATIONS: NotificationItem[] = [
   {
     id: "1",
     title: "New invoice #INV-2044 created",
@@ -103,9 +100,9 @@ const MOCK_NOTIFICATIONS: NotificationItem[] = [
 ];
 
 const SEARCH_DATA: SearchItem[] = [
-  { id: "tx1", title: "INV-2043 - Sokoni Retail", subtitle: "KSh 121,034" },
-  { id: "tx2", title: "INV-2042 - Karibu Foods", subtitle: "KSh 151,728" },
-  { id: "tx3", title: "INV-2038 - Jenga Hardware", subtitle: "KSh 131,776" },
+  { id: "tx1", title: "INV-2043 — Sokoni Retail", subtitle: "KSh 121,034" },
+  { id: "tx2", title: "INV-2042 — Karibu Foods", subtitle: "KSh 151,728" },
+  { id: "tx3", title: "INV-2038 — Jenga Hardware", subtitle: "KSh 131,776" },
   { id: "cust1", title: "Sokoni Retail Group", subtitle: "Customer" },
   { id: "cust2", title: "Karibu Foods Ltd", subtitle: "Customer" },
 ];
@@ -116,7 +113,6 @@ export default function DashboardScreen() {
   const [branch, setBranch] = useState("Nairobi Branch");
   const [dateRange, setDateRange] = useState("1 – 31 Aug 2026");
   const [searchVisible, setSearchVisible] = useState(false);
-  const [notifications] = useState(MOCK_NOTIFICATIONS);
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: SURFACE }}>
@@ -124,41 +120,27 @@ export default function DashboardScreen() {
 
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingTop: SPACE_4, paddingBottom: 120 }}
+        contentContainerStyle={{
+          paddingTop: SPACE_3,
+          paddingBottom: NAV_CLEARANCE,
+        }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Top bar: brand, notifications, account (Settings lives inside the avatar menu — no separate gear icon) */}
-        <View className="flex-row items-center justify-between px-4">
-          <View className="flex-row items-center">
-            <BrandMark size={36} />
-            <Text
-              className="text-[17px]"
-              style={{ color: TEXT_PRIMARY, fontFamily: FONT_BOLD }}
-            >
-              Mizani
-            </Text>
-          </View>
+        <AppHeader
+          initials="WM"
+          name="Wanjiku Mwangi"
+          role="Owner · Mizani Trading Co."
+          notifications={NOTIFICATIONS}
+        />
 
-          <View className="flex-row items-center">
-            <NotificationBell
-              notifications={notifications}
-              onViewAll={() => router.push("/(dashboard)/notifications" as any)}
-            />
-            <UserMenu
-              initials="WM"
-              onAccount={() => {}}
-              onSettings={() => router.push("/(dashboard)/settings" as any)}
-              onLogout={() => router.replace("/login" as any)}
-            />
-          </View>
-        </View>
-
-        {/* Greeting — gradient banner combining the welcome message with a time-of-day icon */}
         <View className="px-4" style={{ marginTop: SPACE_4 }}>
-          <GreetingBanner name="Wanjiku" colors={GRADIENT_PRIMARY} />
+          <GreetingBanner
+            name="Wanjiku"
+            subtitle="Here is how the business is doing today."
+            colors={GRADIENT_FOREST}
+          />
         </View>
 
-        {/* Branch / date / search row */}
         <PillRow>
           <SelectorPill
             label={branch}
@@ -178,31 +160,18 @@ export default function DashboardScreen() {
           <SearchTrigger onPress={() => setSearchVisible(true)} />
         </PillRow>
 
-        {/* Page title */}
-        <View
-          className="px-4"
-          style={{ marginTop: SPACE_5, marginBottom: SPACE_4 }}
-        >
-          <Text
-            className="text-[26px]"
-            style={{ color: TEXT_PRIMARY, fontFamily: FONT_BOLD }}
-          >
-            Dashboard
-          </Text>
-          <Text
-            className="text-[13px] mt-1"
-            style={{ color: TEXT_SECONDARY, fontFamily: FONT_REG }}
-          >
-            {branch} · {dateRange} · Last synced 14:26 EAT
-          </Text>
-        </View>
+        <PageTitle
+          title="Dashboard"
+          subtitle={`${branch} · ${dateRange} · Last synced 14:26 EAT`}
+        />
 
         <View className="px-4">
           <AlertBanner
+            tone="danger"
             title="KRA Filing Deadline Approaching"
             description="Your August VAT return (VAT-3) is due on 20 Sep 2026 — 14 invoices worth KSh 184,300 are still unsigned on eTIMS."
-            actionLabel="Review"
-            onAction={() => router.push("/(dashboard)/kra" as any)}
+            actionLabel="Review filing"
+            onAction={() => router.replace("/(dashboard)/kra")}
           />
 
           <StatCard
@@ -236,37 +205,22 @@ export default function DashboardScreen() {
             title="Estimated KRA Liability"
             badgeLabel="Due 20 Sep"
             value="KSh 318,472"
-            helper="VAT 218,940 · PAYE 74,532 · Turnover tax 25,000"
+            rows={[
+              { label: "VAT (16%)", value: "KSh 218,940" },
+              { label: "PAYE", value: "KSh 74,532" },
+              { label: "Turnover tax", value: "KSh 25,000" },
+            ]}
             actionLabel="Auto-Export"
             onAction={() => showToast("Preparing export…")}
-            colors={GRADIENT_PRIMARY}
+            colors={GRADIENT_FOREST}
           />
 
-          <View style={{ marginTop: SPACE_4 }}>
-            <View className="flex-row items-start justify-between mb-1">
-              <View>
-                <Text
-                  className="text-[18px]"
-                  style={{ color: TEXT_PRIMARY, fontFamily: FONT_SEMI }}
-                >
-                  Recent Transactions
-                </Text>
-                <Text
-                  className="text-[12px] mt-1"
-                  style={{ color: TEXT_SECONDARY, fontFamily: FONT_REG }}
-                >
-                  9 of 214 entries this period
-                </Text>
-              </View>
-              <Text
-                className="text-[12px] mt-1"
-                style={{ color: GREEN, fontFamily: FONT_SEMI }}
-                onPress={() => router.push("/(dashboard)/sales" as any)}
-              >
-                View all
-              </Text>
-            </View>
-          </View>
+          <SectionHeading
+            title="Recent Transactions"
+            subtitle="9 of 214 entries this period"
+            actionLabel="View all"
+            onAction={() => router.replace("/(dashboard)/sales")}
+          />
 
           <FilterChips
             options={SOURCE_FILTERS}
@@ -275,18 +229,23 @@ export default function DashboardScreen() {
           />
 
           {TRANSACTIONS.map((tx) => (
-            <TransactionRow key={tx.id} tx={tx} />
+            <TransactionRow
+              key={tx.id}
+              tx={tx}
+              onPress={() => showToast(`${tx.reference} · detail view soon`)}
+            />
           ))}
         </View>
       </ScrollView>
 
-      <BottomNav active="dashboard" />
+      <BottomNav />
 
       <SearchModal
         visible={searchVisible}
         onClose={() => setSearchVisible(false)}
         data={SEARCH_DATA}
-        onSelect={() => {}}
+        placeholder="Search invoices, customers…"
+        onSelect={(item) => showToast(item.title)}
       />
 
       <ToastHost />

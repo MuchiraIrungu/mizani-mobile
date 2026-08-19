@@ -1,54 +1,43 @@
-import { useRouter } from "expo-router";
-import {
-    Boxes,
-    Download,
-    LayoutGrid,
-    MoreHorizontal,
-    Package,
-    Plus,
-    TrendingUp,
-    Users,
-} from "lucide-react-native";
+import { Boxes, Download, Plus } from "lucide-react-native";
 import { useState } from "react";
 import { ScrollView, StatusBar, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
-    BG,
-    BottomNav,
-    BrandMark,
-    GhostPillButton,
-    GREEN,
-    GREEN_TINT_A,
-    NotificationBell,
-    PillRow,
-    SearchModal,
-    SearchTrigger,
-    SelectorPill,
-    SHADOW_MD,
-    SHADOW_SM,
-    SPACE_2,
-    SPACE_4,
-    SPACE_5,
-    StatCard,
-    StatusPill,
-    SURFACE,
-    TEXT_PRIMARY,
-    TEXT_SECONDARY,
-    UserMenu,
-    type NavKey,
-    type NotificationItem,
-    type SearchItem,
+  AlertBanner,
+  AppHeader,
+  BG,
+  BottomNav,
+  FONT_REG,
+  FONT_SEMI,
+  GhostPillButton,
+  GRADIENT_TEAL,
+  GradientStatCard,
+  GREEN,
+  GREEN_TINT,
+  NAV_CLEARANCE,
+  PageTitle,
+  PillRow,
+  PrimaryButton,
+  SearchModal,
+  SearchTrigger,
+  SelectorPill,
+  SHADOW_SM,
+  showToast,
+  SPACE_2,
+  SPACE_3,
+  SPACE_4,
+  StatCard,
+  StatusPill,
+  SURFACE,
+  TEXT_PRIMARY,
+  TEXT_SECONDARY,
+  ToastHost,
+  type NotificationItem,
+  type SearchItem,
 } from "../../components/dashboard/dashboardUI";
 
-const FONT_REG = "Lexend_400Regular";
-const FONT_MED = "Lexend_500Medium";
-const FONT_SEMI = "Lexend_600SemiBold";
-const FONT_BOLD = "Lexend_700Bold";
-
-/* ------------------------------------------------------------------ */
-/* Mock data                                                           */
-/* ------------------------------------------------------------------ */
+/* Inventory — stock on hand grouped by category, with reorder warnings. */
 
 type InventoryItem = {
   id: string;
@@ -63,7 +52,6 @@ type InventoryItem = {
 type Category = {
   id: string;
   name: string;
-  toReorder: number;
   items: InventoryItem[];
 };
 
@@ -71,7 +59,6 @@ const CATEGORIES: Category[] = [
   {
     id: "dry",
     name: "DRY GOODS",
-    toReorder: 2,
     items: [
       {
         id: "1",
@@ -114,7 +101,6 @@ const CATEGORIES: Category[] = [
   {
     id: "oils",
     name: "COOKING OILS",
-    toReorder: 1,
     items: [
       {
         id: "5",
@@ -125,14 +111,23 @@ const CATEGORIES: Category[] = [
         unit: "jerricans",
         status: "in-stock",
       },
+      {
+        id: "6",
+        name: "Cooking fat 1kg — Kimbo",
+        sku: "LIQ-CF-1000",
+        supplier: "Bidco Africa",
+        quantity: "14",
+        unit: "tins",
+        status: "reorder",
+      },
     ],
   },
 ];
 
-const MOCK_NOTIFICATIONS: NotificationItem[] = [
+const NOTIFICATIONS: NotificationItem[] = [
   {
     id: "1",
-    title: "6 items are at or below reorder level",
+    title: "3 items are at or below reorder level",
     time: "20 min ago",
     tone: "warning",
   },
@@ -152,51 +147,7 @@ const SEARCH_DATA: SearchItem[] = CATEGORIES.flatMap((c) =>
   })),
 );
 
-const NAV_ITEMS: {
-  key: NavKey;
-  label: string;
-  icon: (color: string) => React.ReactNode;
-}[] = [
-  {
-    key: "dashboard",
-    label: "Dashboard",
-    icon: (c) => <LayoutGrid size={20} color={c} />,
-  },
-  {
-    key: "sales",
-    label: "Sales",
-    icon: (c) => <TrendingUp size={20} color={c} />,
-  },
-  {
-    key: "inventory",
-    label: "Inventory",
-    icon: (c) => <Package size={20} color={c} />,
-  },
-  {
-    key: "payroll",
-    label: "Payroll",
-    icon: (c) => <Users size={20} color={c} />,
-  },
-  {
-    key: "more",
-    label: "More",
-    icon: (c) => <MoreHorizontal size={20} color={c} />,
-  },
-];
-
-const ROUTES: Record<NavKey, string> = {
-  dashboard: "/(dashboard)/main",
-  sales: "/(dashboard)/sales",
-  inventory: "/(dashboard)/inventory",
-  payroll: "/(dashboard)/payroll",
-  more: "/(dashboard)/main",
-};
-
-/* ------------------------------------------------------------------ */
-/* Local building blocks                                               */
-/* ------------------------------------------------------------------ */
-
-function CategorySectionHeader({
+function CategoryHeader({
   name,
   count,
   toReorder,
@@ -208,7 +159,7 @@ function CategorySectionHeader({
   return (
     <View
       className="flex-row items-center justify-between"
-      style={{ marginTop: SPACE_4, marginBottom: SPACE_2 }}
+      style={{ marginTop: SPACE_2, marginBottom: SPACE_3 }}
     >
       <View className="flex-row items-center">
         <Text
@@ -243,7 +194,7 @@ function InventoryItemRow({ item }: { item: InventoryItem }) {
     >
       <View
         className="w-10 h-10 rounded-[10px] items-center justify-center mr-3"
-        style={{ backgroundColor: GREEN_TINT_A }}
+        style={{ backgroundColor: GREEN_TINT }}
       >
         <Boxes size={18} color={GREEN} />
       </View>
@@ -266,7 +217,7 @@ function InventoryItemRow({ item }: { item: InventoryItem }) {
       <View className="items-end">
         <Text
           className="text-[15px] mb-1.5"
-          style={{ color: TEXT_PRIMARY, fontFamily: FONT_BOLD }}
+          style={{ color: TEXT_PRIMARY, fontFamily: FONT_SEMI }}
         >
           {item.quantity}{" "}
           <Text
@@ -285,39 +236,15 @@ function InventoryItemRow({ item }: { item: InventoryItem }) {
   );
 }
 
-/** Floating "Add Product" pill — separate from the shared BottomNav "+" FAB,
- *  which is reserved for Add Transaction. Sits just above the nav bar. */
-function AddProductFab({ onPress }: { onPress?: () => void }) {
-  return (
-    <View style={{ position: "absolute", right: 16, bottom: 96, zIndex: 20 }}>
-      <View
-        onTouchEnd={onPress}
-        className="flex-row items-center px-4 py-3 rounded-[999px]"
-        style={{ backgroundColor: GREEN, ...SHADOW_MD }}
-      >
-        <Plus size={16} color="#FFFFFF" />
-        <Text
-          className="text-[13px] ml-1.5"
-          style={{ color: "#FFFFFF", fontFamily: FONT_SEMI }}
-        >
-          Add Product
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Main screen                                                         */
-/* ------------------------------------------------------------------ */
-
 export default function InventoryScreen() {
-  const router = useRouter();
-  const [activeTab, setActiveTab] = useState<NavKey>("inventory");
   const [branch, setBranch] = useState("Nairobi Branch");
-  const [dateRange, setDateRange] = useState("1 – 31 Aug 2026");
+  const [category, setCategory] = useState("All categories");
   const [searchVisible, setSearchVisible] = useState(false);
-  const [notifications] = useState(MOCK_NOTIFICATIONS);
+
+  const visible =
+    category === "All categories"
+      ? CATEGORIES
+      : CATEGORIES.filter((c) => c.name === category);
 
   const totalItems = CATEGORIES.reduce((sum, c) => sum + c.items.length, 0);
   const lowStock = CATEGORIES.reduce(
@@ -325,42 +252,25 @@ export default function InventoryScreen() {
     0,
   );
 
-  const handleNavChange = (key: NavKey) => {
-    setActiveTab(key);
-    router.push(ROUTES[key] as any);
-  };
-
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: SURFACE }}>
       <StatusBar barStyle="dark-content" backgroundColor={SURFACE} />
 
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingTop: SPACE_4, paddingBottom: 160 }}
+        contentContainerStyle={{
+          paddingTop: SPACE_3,
+          paddingBottom: NAV_CLEARANCE,
+        }}
         showsVerticalScrollIndicator={false}
       >
-        {/* ---- Top bar: brand + notifications + account ---- */}
-        <View className="flex-row items-center justify-between px-4">
-          <View className="flex-row items-center">
-            <BrandMark size={36} />
-            <Text
-              className="text-[17px]"
-              style={{ color: TEXT_PRIMARY, fontFamily: FONT_BOLD }}
-            >
-              Mizani
-            </Text>
-          </View>
+        <AppHeader
+          initials="WM"
+          name="Wanjiku Mwangi"
+          role="Owner · Mizani Trading Co."
+          notifications={NOTIFICATIONS}
+        />
 
-          <View className="flex-row items-center">
-            <NotificationBell
-              notifications={notifications}
-              onViewAll={() => router.push("/(dashboard)/main" as any)}
-            />
-            <UserMenu initials="WM" />
-          </View>
-        </View>
-
-        {/* ---- Branch / date / search row ---- */}
         <PillRow>
           <SelectorPill
             label={branch}
@@ -373,64 +283,79 @@ export default function InventoryScreen() {
             onSelect={setBranch}
           />
           <SelectorPill
-            label={dateRange}
-            options={["Today", "This Week", "1 – 31 Aug 2026", "Custom range"]}
-            onSelect={setDateRange}
+            label={category}
+            options={["All categories", ...CATEGORIES.map((c) => c.name)]}
+            onSelect={setCategory}
           />
           <SearchTrigger onPress={() => setSearchVisible(true)} />
         </PillRow>
 
-        {/* ---- Page title + download action ---- */}
-        <View
-          className="flex-row items-start justify-between px-4"
-          style={{ marginTop: SPACE_5, marginBottom: SPACE_4 }}
-        >
-          <View className="flex-1 mr-3">
-            <Text
-              className="text-[26px]"
-              style={{ color: TEXT_PRIMARY, fontFamily: FONT_BOLD }}
-            >
-              Inventory
-            </Text>
-            <Text
-              className="text-[13px] mt-1"
-              style={{ color: TEXT_SECONDARY, fontFamily: FONT_REG }}
-            >
-              {branch} · {CATEGORIES.length} categories · counted 16 Aug 2026
-            </Text>
-          </View>
-        </View>
+        <PageTitle
+          title="Inventory"
+          subtitle={`${branch} · ${CATEGORIES.length} categories · counted 16 Aug 2026`}
+        />
 
         <View className="px-4">
-          <View className="mb-5">
+          <View style={{ marginBottom: SPACE_4 }}>
             <GhostPillButton
               label="Stock report"
-              icon={<Download size={14} color={TEXT_PRIMARY} />}
-              onPress={() => {}}
+              icon={<Download size={14} color={TEXT_SECONDARY} />}
+              onPress={() => showToast("Preparing stock report…")}
             />
           </View>
 
-          <StatCard
-            title="Total Items"
+          <AlertBanner
+            tone="warning"
+            title={`${lowStock} items need reordering`}
+            description="These SKUs are at or below their reorder level. Raise a purchase order before the next delivery window closes."
+            actionLabel="Create purchase order"
+            onAction={() => showToast("Purchase orders coming soon")}
+          />
+
+          <GradientStatCard
+            title="Stock on Hand"
             badgeLabel={`${CATEGORIES.length} categories`}
-            value={String(totalItems)}
-            helper="Distinct SKUs tracked at this branch"
+            value="KSh 1,284,600"
+            helper={`${totalItems} distinct SKUs tracked at this branch`}
+            rows={[
+              { label: "Dry goods", value: "KSh 921,400" },
+              { label: "Cooking oils", value: "KSh 363,200" },
+            ]}
+            actionLabel="Export valuation"
+            onAction={() => showToast("Preparing valuation…")}
+            colors={GRADIENT_TEAL}
           />
 
           <StatCard
             title="Low Stock"
-            badgeLabel={`${lowStock} to reorder`}
             tone="warning"
+            badgeLabel={`${lowStock} to reorder`}
             value={String(lowStock)}
             helper="Items at or below their reorder level"
+            footerStats={[
+              { label: "DRY GOODS", value: "2" },
+              { label: "OILS", value: "1" },
+              { label: "OUT OF STOCK", value: "0" },
+            ]}
           />
 
-          {CATEGORIES.map((cat) => (
+          <View style={{ marginBottom: SPACE_4 }}>
+            <PrimaryButton
+              label="Add Product"
+              icon={<Plus size={16} color="#FFFFFF" />}
+              onPress={() => showToast("Product form coming soon")}
+              colors={GRADIENT_TEAL}
+            />
+          </View>
+
+          {visible.map((cat) => (
             <View key={cat.id}>
-              <CategorySectionHeader
+              <CategoryHeader
                 name={cat.name}
                 count={cat.items.length}
-                toReorder={cat.toReorder}
+                toReorder={
+                  cat.items.filter((i) => i.status === "reorder").length
+                }
               />
               {cat.items.map((item) => (
                 <InventoryItemRow key={item.id} item={item} />
@@ -440,26 +365,17 @@ export default function InventoryScreen() {
         </View>
       </ScrollView>
 
-      <AddProductFab
-        onPress={() => router.push("/(dashboard)/add-transaction" as any)}
-      />
-
-      <BottomNav
-        active={activeTab}
-        onChange={handleNavChange}
-        navItems={NAV_ITEMS}
-        onAdd={() => router.push("/(dashboard)/add-transaction" as any)}
-      />
+      <BottomNav />
 
       <SearchModal
         visible={searchVisible}
         onClose={() => setSearchVisible(false)}
         data={SEARCH_DATA}
         placeholder="Search products, SKUs, suppliers…"
-        onSelect={(item) => {
-          console.log("Selected:", item);
-        }}
+        onSelect={(item) => showToast(item.title)}
       />
+
+      <ToastHost />
     </SafeAreaView>
   );
 }

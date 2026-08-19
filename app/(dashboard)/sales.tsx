@@ -1,39 +1,37 @@
-import { useRouter } from "expo-router";
 import { Plus } from "lucide-react-native";
 import { useState } from "react";
-import { ScrollView, StatusBar, Text, View } from "react-native";
+import { ScrollView, StatusBar, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
-    BottomNav,
-    BrandMark,
-    FilterChips,
-    InvoiceRow,
-    NotificationBell,
-    PillRow,
-    PillTabs,
-    PrimaryButton,
-    SearchModal,
-    SearchTrigger,
-    SelectorPill,
-    showToast,
-    SPACE_2,
-    SPACE_4,
-    SPACE_5,
-    StatCard,
-    SURFACE,
-    TEXT_PRIMARY,
-    TEXT_SECONDARY,
-    //ToastHost,
-    UserMenu,
-    type Invoice,
-    type NotificationItem,
-    type SearchItem,
+  AppHeader,
+  BottomNav,
+  FilterChips,
+  GRADIENT_OCEAN,
+  GradientStatCard,
+  InvoiceRow,
+  NAV_CLEARANCE,
+  PageTitle,
+  PillRow,
+  PillTabs,
+  PrimaryButton,
+  SearchModal,
+  SearchTrigger,
+  SectionHeading,
+  SelectorPill,
+  showToast,
+  SPACE_3,
+  SPACE_4,
+  StatCard,
+  SURFACE,
+  ToastHost,
+  type Invoice,
+  type NotificationItem,
+  type SearchItem,
 } from "../../components/dashboard/dashboardUI";
 
-const FONT_REG = "Lexend_400Regular";
-const FONT_SEMI = "Lexend_600SemiBold";
-const FONT_BOLD = "Lexend_700Bold";
+/* Sales — invoice book with outstanding/overdue headline figures, status
+   filters and the full invoice list. */
 
 const INVOICES: Invoice[] = [
   {
@@ -92,9 +90,15 @@ const INVOICES: Invoice[] = [
   },
 ];
 
+const CUSTOMERS = [
+  { name: "Sokoni Retail Group", detail: "12 invoices · Net 30", owed: "KSh 121,034" },
+  { name: "Karibu Foods Ltd", detail: "8 invoices · Net 30", owed: "KSh 151,728" },
+  { name: "Jenga Hardware", detail: "5 invoices · Net 14", owed: "KSh 131,776" },
+];
+
 const STATUS_FILTERS = ["All", "Pending", "Overdue", "Paid"];
 
-const MOCK_NOTIFICATIONS: NotificationItem[] = [
+const NOTIFICATIONS: NotificationItem[] = [
   {
     id: "1",
     title: "New invoice #INV-2044 created",
@@ -103,41 +107,29 @@ const MOCK_NOTIFICATIONS: NotificationItem[] = [
   },
   {
     id: "2",
-    title: "KRA filing deadline in 5 days",
+    title: "INV-2035 is now 15 days overdue",
     time: "1 hour ago",
-    tone: "warning",
-  },
-  {
-    id: "3",
-    title: "Payment received from Sokoni Retail",
-    time: "3 hours ago",
-    tone: "positive",
+    tone: "danger",
   },
 ];
 
-const SEARCH_DATA: SearchItem[] = [
-  { id: "inv1", title: "INV-2043 - Sokoni Retail", subtitle: "KSh 121,034" },
-  { id: "inv2", title: "INV-2042 - Karibu Foods", subtitle: "KSh 151,728" },
-  { id: "inv3", title: "INV-2038 - Jenga Hardware", subtitle: "KSh 131,776" },
-  { id: "cust1", title: "Sokoni Retail Group", subtitle: "Customer" },
-  { id: "cust2", title: "Karibu Foods Ltd", subtitle: "Customer" },
-];
+const SEARCH_DATA: SearchItem[] = INVOICES.map((i) => ({
+  id: i.id,
+  title: `${i.reference} — ${i.customer}`,
+  subtitle: `${i.amount} · ${i.statusLabel}`,
+}));
 
-export default function SalesInventoryScreen() {
-  const router = useRouter();
+export default function SalesScreen() {
   const [topTab, setTopTab] = useState("Invoices");
   const [statusFilter, setStatusFilter] = useState("All");
   const [searchVisible, setSearchVisible] = useState(false);
   const [branch, setBranch] = useState("Nairobi Branch");
   const [dateRange, setDateRange] = useState("1 – 31 Aug 2026");
-  const [notifications] = useState(MOCK_NOTIFICATIONS);
 
-  const filteredInvoices = INVOICES.filter((inv) => {
-    if (statusFilter === "All") return true;
-    return inv.status === statusFilter.toLowerCase();
-  });
-
-  const totalOutstanding = INVOICES.filter((i) => i.status !== "paid");
+  const filteredInvoices = INVOICES.filter((inv) =>
+    statusFilter === "All" ? true : inv.status === statusFilter.toLowerCase(),
+  );
+  const outstanding = INVOICES.filter((i) => i.status !== "paid");
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: SURFACE }}>
@@ -145,33 +137,18 @@ export default function SalesInventoryScreen() {
 
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingTop: SPACE_4, paddingBottom: 120 }}
+        contentContainerStyle={{
+          paddingTop: SPACE_3,
+          paddingBottom: NAV_CLEARANCE,
+        }}
         showsVerticalScrollIndicator={false}
       >
-        <View className="flex-row items-center justify-between px-4">
-          <View className="flex-row items-center">
-            <BrandMark size={36} />
-            <Text
-              className="text-[17px]"
-              style={{ color: TEXT_PRIMARY, fontFamily: FONT_BOLD }}
-            >
-              Mizani
-            </Text>
-          </View>
-
-          <View className="flex-row items-center">
-            <NotificationBell
-              notifications={notifications}
-              onViewAll={() => router.push("/(dashboard)/main" as any)}
-            />
-            <UserMenu
-              initials="WM"
-              onAccount={() => {}}
-              onSettings={() => router.push("/(dashboard)/settings" as any)}
-              onLogout={() => router.replace("/login" as any)}
-            />
-          </View>
-        </View>
+        <AppHeader
+          initials="WM"
+          name="Wanjiku Mwangi"
+          role="Owner · Mizani Trading Co."
+          notifications={NOTIFICATIONS}
+        />
 
         <PillRow>
           <SelectorPill
@@ -192,95 +169,106 @@ export default function SalesInventoryScreen() {
           <SearchTrigger onPress={() => setSearchVisible(true)} />
         </PillRow>
 
-        <View
-          className="flex-row items-start justify-between px-4"
-          style={{ marginTop: SPACE_5, marginBottom: SPACE_4 }}
-        >
-          <View className="flex-1 mr-3">
-            <Text
-              className="text-[26px]"
-              style={{ color: TEXT_PRIMARY, fontFamily: FONT_BOLD }}
-            >
-              Invoices
-            </Text>
-            <Text
-              className="text-[13px] mt-1"
-              style={{ color: TEXT_SECONDARY, fontFamily: FONT_REG }}
-            >
-              {branch} · {dateRange} · {INVOICES.length} invoices
-            </Text>
-          </View>
-        </View>
+        <PageTitle
+          title="Sales"
+          subtitle={`${branch} · ${dateRange} · ${INVOICES.length} invoices`}
+        />
 
         <View className="px-4">
-          <PrimaryButton
-            label="New Invoice"
-            icon={<Plus size={16} color="#FFFFFF" />}
-            onPress={() => showToast("Invoice creation coming soon")}
-          />
-
-          <View style={{ marginTop: SPACE_5 }}>
-            <PillTabs
-              options={["Invoices", "Customers"]}
-              value={topTab}
-              onChange={setTopTab}
-            />
-          </View>
-
-          <StatCard
+          <GradientStatCard
             title="Total Outstanding"
-            badgeLabel={`${totalOutstanding.length} invoices`}
+            badgeLabel={`${outstanding.length} invoices`}
             value="KSh 478,662"
             helper="Across 2 pending and 2 overdue invoices"
+            footerStats={[
+              { label: "PENDING", value: "272,762" },
+              { label: "OVERDUE", value: "205,900" },
+              { label: "PAID (MTD)", value: "305,990" },
+            ]}
+            colors={GRADIENT_OCEAN}
           />
 
           <StatCard
             title="Overdue"
-            badgeLabel="43% of outstanding"
-            badgeTone="danger"
             tone="danger"
+            badgeLabel="43% of outstanding"
             value="KSh 205,900"
             helper="Oldest unpaid invoice is 15 days past its due date"
+            footerStats={[
+              { label: "INVOICES", value: "2" },
+              { label: "OLDEST", value: "15 days" },
+              { label: "AT RISK", value: "74,124" },
+            ]}
           />
 
-          <View style={{ marginTop: SPACE_2, marginBottom: SPACE_4 }}>
-            <Text
-              className="text-[18px]"
-              style={{ color: TEXT_PRIMARY, fontFamily: FONT_SEMI }}
-            >
-              All invoices
-            </Text>
-            <Text
-              className="text-[12px] mt-1"
-              style={{ color: TEXT_SECONDARY, fontFamily: FONT_REG }}
-            >
-              {filteredInvoices.length} shown
-            </Text>
+          <View style={{ marginBottom: SPACE_4 }}>
+            <PrimaryButton
+              label="New Invoice"
+              icon={<Plus size={16} color="#FFFFFF" />}
+              onPress={() => showToast("Invoice creation coming soon")}
+              colors={GRADIENT_OCEAN}
+            />
           </View>
 
-          <FilterChips
-            options={STATUS_FILTERS}
-            value={statusFilter}
-            onChange={setStatusFilter}
+          <PillTabs
+            options={["Invoices", "Customers"]}
+            value={topTab}
+            onChange={setTopTab}
           />
 
-          {filteredInvoices.map((inv) => (
-            <InvoiceRow
-              key={inv.id}
-              invoice={inv}
-              onPress={() => showToast("Invoice detail view coming soon")}
-            />
-          ))}
+          {topTab === "Invoices" ? (
+            <>
+              <SectionHeading
+                title="All invoices"
+                subtitle={`${filteredInvoices.length} shown`}
+              />
+              <FilterChips
+                options={STATUS_FILTERS}
+                value={statusFilter}
+                onChange={setStatusFilter}
+              />
+              {filteredInvoices.map((inv) => (
+                <InvoiceRow
+                  key={inv.id}
+                  invoice={inv}
+                  onPress={() => showToast(`${inv.reference} · detail soon`)}
+                />
+              ))}
+            </>
+          ) : (
+            <>
+              <SectionHeading
+                title="Customers"
+                subtitle={`${CUSTOMERS.length} accounts with a balance`}
+              />
+              {CUSTOMERS.map((c) => (
+                <InvoiceRow
+                  key={c.name}
+                  invoice={{
+                    id: c.name,
+                    customer: c.name,
+                    reference: c.detail,
+                    dueDate: "",
+                    statusLabel: "Balance outstanding",
+                    amount: c.owed,
+                    status: "pending",
+                  }}
+                  onPress={() => showToast(`${c.name} · detail soon`)}
+                />
+              ))}
+            </>
+          )}
         </View>
       </ScrollView>
 
-      <BottomNav active="sales" />
+      <BottomNav />
 
       <SearchModal
         visible={searchVisible}
         onClose={() => setSearchVisible(false)}
         data={SEARCH_DATA}
-        onSelect={() => {}}
+        placeholder="Search invoices, customers…"
+        onSelect={(item) => showToast(item.title)}
       />
 
       <ToastHost />
