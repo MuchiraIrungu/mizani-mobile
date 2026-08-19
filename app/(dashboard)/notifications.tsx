@@ -14,7 +14,7 @@ import {
   FONT_REG,
   FONT_SEMI,
   GhostPillButton,
-  GRADIENT_SLATE,
+  GRADIENT_FOREST,
   GradientStatCard,
   GREEN,
   GREEN_TINT,
@@ -196,7 +196,7 @@ export default function NotificationsScreen() {
               { label: "Payroll", value: "1" },
               { label: "Inventory", value: "0" },
             ]}
-            colors={GRADIENT_SLATE}
+            colors={GRADIENT_FOREST}
           />
 
           <FilterChips options={GROUPS} value={group} onChange={setGroup} />

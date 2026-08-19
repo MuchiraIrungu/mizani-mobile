@@ -9,7 +9,7 @@ import {
   DataCard,
   DataRow,
   GhostPillButton,
-  GRADIENT_SLATE,
+  GRADIENT_FOREST,
   GradientStatCard,
   InfoRow,
   NAV_CLEARANCE,
@@ -168,7 +168,7 @@ export default function SuppliersScreen() {
             rows={AGEING.map((a) => ({ label: a.label, value: a.value }))}
             actionLabel="Export statement"
             onAction={() => showToast("Preparing statement…")}
-            colors={GRADIENT_SLATE}
+            colors={GRADIENT_FOREST}
           />
 
           <StatCard
@@ -202,7 +202,7 @@ export default function SuppliersScreen() {
               label="Add Supplier"
               icon={<Plus size={16} color="#FFFFFF" />}
               onPress={() => showToast("Supplier form coming soon")}
-              colors={GRADIENT_SLATE}
+              colors={GRADIENT_FOREST}
             />
           </View>
 

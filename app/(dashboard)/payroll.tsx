@@ -10,7 +10,7 @@ import {
   DataCard,
   DataRow,
   FilterChips,
-  GRADIENT_VIOLET,
+  GRADIENT_FOREST,
   GradientStatCard,
   InfoRow,
   NAV_CLEARANCE,
@@ -187,7 +187,7 @@ export default function PayrollScreen() {
             ]}
             actionLabel="Export payslips"
             onAction={() => showToast("Preparing payslips…")}
-            colors={GRADIENT_VIOLET}
+            colors={GRADIENT_FOREST}
           />
 
           <StatCard
@@ -224,7 +224,7 @@ export default function PayrollScreen() {
               label="Run September payroll"
               icon={<Send size={16} color="#FFFFFF" />}
               onPress={() => showToast("Payroll run coming soon")}
-              colors={GRADIENT_VIOLET}
+              colors={GRADIENT_FOREST}
             />
           </View>
 
@@ -260,7 +260,7 @@ export default function PayrollScreen() {
               label="Mark all as paid"
               icon={<CheckCircle2 size={16} color="#FFFFFF" />}
               onPress={() => showToast("Marked all employees as paid")}
-              colors={GRADIENT_VIOLET}
+              colors={GRADIENT_FOREST}
             />
           </View>
         </View>

@@ -11,7 +11,7 @@ import {
   FONT_REG,
   FONT_SEMI,
   GhostPillButton,
-  GRADIENT_TEAL,
+  GRADIENT_FOREST,
   GradientStatCard,
   GREEN,
   GREEN_TINT,
@@ -323,7 +323,7 @@ export default function InventoryScreen() {
             ]}
             actionLabel="Export valuation"
             onAction={() => showToast("Preparing valuation…")}
-            colors={GRADIENT_TEAL}
+            colors={GRADIENT_FOREST}
           />
 
           <StatCard
@@ -344,7 +344,7 @@ export default function InventoryScreen() {
               label="Add Product"
               icon={<Plus size={16} color="#FFFFFF" />}
               onPress={() => showToast("Product form coming soon")}
-              colors={GRADIENT_TEAL}
+              colors={GRADIENT_FOREST}
             />
           </View>
 

@@ -7,7 +7,7 @@ import {
   AppHeader,
   BottomNav,
   FilterChips,
-  GRADIENT_OCEAN,
+  GRADIENT_FOREST,
   GradientStatCard,
   InvoiceRow,
   NAV_CLEARANCE,
@@ -185,7 +185,7 @@ export default function SalesScreen() {
               { label: "OVERDUE", value: "205,900" },
               { label: "PAID (MTD)", value: "305,990" },
             ]}
-            colors={GRADIENT_OCEAN}
+            colors={GRADIENT_FOREST}
           />
 
           <StatCard
@@ -206,7 +206,7 @@ export default function SalesScreen() {
               label="New Invoice"
               icon={<Plus size={16} color="#FFFFFF" />}
               onPress={() => showToast("Invoice creation coming soon")}
-              colors={GRADIENT_OCEAN}
+              colors={GRADIENT_FOREST}
             />
           </View>
 

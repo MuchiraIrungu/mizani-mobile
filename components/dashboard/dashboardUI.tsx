@@ -4,7 +4,6 @@ import {
   AlertTriangle,
   Bell,
   BarChart3,
-  Boxes,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -109,18 +108,16 @@ export const SHADOW_MD: ViewStyle = {
 export type Gradient = [string, string, ...string[]];
 
 /**
- * Page gradients — every hue is a token from global.css (primary green,
- * bahari blue, warning amber, simba red) pushed to a dark → mid → lively stop.
- * Structure stays identical across screens; only the hue changes per page.
+ * Three gradients, one job each. Every hue is a global.css token (primary
+ * green, simba red, warning amber) pushed to a dark → mid → lively stop.
+ *
+ *   FOREST  — the default. Every page hero, CTA, the avatar and the FAB.
+ *   CRIMSON — alerts only: overdue money, blocked filings, unpaid staff.
+ *   AMBER   — statutory deadlines: tax and payroll obligations with a due date.
  */
 export const GRADIENT_FOREST: Gradient = ["#063D24", "#0A5C36", "#22C55E"];
-export const GRADIENT_OCEAN: Gradient = ["#063347", "#0B4F6C", "#22D3EE"];
-export const GRADIENT_AMBER: Gradient = ["#7C2D12", "#B45309", "#F59E0B"];
-export const GRADIENT_TEAL: Gradient = ["#053B2C", "#0F766E", "#2DD4BF"];
-export const GRADIENT_VIOLET: Gradient = ["#3B0764", "#6D28D9", "#A78BFA"];
-export const GRADIENT_INDIGO: Gradient = ["#172554", "#2563EB", "#60A5FA"];
-export const GRADIENT_SLATE: Gradient = ["#0F172A", "#334155", "#64748B"];
 export const GRADIENT_CRIMSON: Gradient = ["#7F1414", "#B91C1C", "#F87171"];
+export const GRADIENT_AMBER: Gradient = ["#7C2D12", "#B45309", "#F59E0B"];
 
 /** Brand gradient — the avatar, FAB and primary CTAs use this on every screen. */
 export const GRADIENT_PRIMARY = GRADIENT_FOREST;
@@ -215,7 +212,7 @@ export const APP_ROUTES: NavRoute[] = [
     href: "/(dashboard)/sales",
     icon: (c, s = 20) => <Receipt size={s} color={c} />,
     slot: "tab",
-    gradient: GRADIENT_OCEAN,
+    gradient: GRADIENT_FOREST,
   },
   {
     key: "kra",
@@ -232,7 +229,7 @@ export const APP_ROUTES: NavRoute[] = [
     href: "/(dashboard)/payroll",
     icon: (c, s = 20) => <Users size={s} color={c} />,
     slot: "tab",
-    gradient: GRADIENT_VIOLET,
+    gradient: GRADIENT_FOREST,
   },
   {
     key: "inventory",
@@ -240,7 +237,7 @@ export const APP_ROUTES: NavRoute[] = [
     href: "/(dashboard)/inventory",
     icon: (c, s = 20) => <Package size={s} color={c} />,
     slot: "more",
-    gradient: GRADIENT_TEAL,
+    gradient: GRADIENT_FOREST,
   },
   {
     key: "suppliers",
@@ -248,7 +245,7 @@ export const APP_ROUTES: NavRoute[] = [
     href: "/(dashboard)/suppliers",
     icon: (c, s = 20) => <Truck size={s} color={c} />,
     slot: "more",
-    gradient: GRADIENT_SLATE,
+    gradient: GRADIENT_FOREST,
   },
   {
     key: "reports",
@@ -256,7 +253,7 @@ export const APP_ROUTES: NavRoute[] = [
     href: "/(dashboard)/reports",
     icon: (c, s = 20) => <BarChart3 size={s} color={c} />,
     slot: "more",
-    gradient: GRADIENT_INDIGO,
+    gradient: GRADIENT_FOREST,
   },
   {
     key: "notifications",
@@ -264,7 +261,7 @@ export const APP_ROUTES: NavRoute[] = [
     href: "/(dashboard)/notifications",
     icon: (c, s = 20) => <Bell size={s} color={c} />,
     slot: "more",
-    gradient: GRADIENT_SLATE,
+    gradient: GRADIENT_FOREST,
   },
 ];
 
@@ -2416,6 +2413,3 @@ export function BottomNav({
 
 /** Height to leave clear at the bottom of a ScrollView so the nav never overlaps content. */
 export const NAV_CLEARANCE = 150;
-
-/** Re-exported so screens can build icon rows without a second lucide import. */
-export { Boxes, Package, Truck, Users };

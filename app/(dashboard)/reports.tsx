@@ -9,7 +9,7 @@ import {
   DataCard,
   DataRow,
   FONT_SEMI,
-  GRADIENT_INDIGO,
+  GRADIENT_FOREST,
   GradientStatCard,
   NAV_CLEARANCE,
   PageTitle,
@@ -31,12 +31,14 @@ import {
 /* Reports — revenue vs expenses for the period, expense mix and exportable
    statements. */
 
+/* Shades of the brand green, darkest for the largest share, so the mix reads
+   as one family rather than five unrelated hues. */
 const EXPENSE_BREAKDOWN = [
-  { label: "Stock purchases", value: "KSh 812,000", pct: "58%", color: "#2563EB" },
-  { label: "Payroll", value: "KSh 402,150", pct: "29%", color: "#6D28D9" },
-  { label: "Rent & utilities", value: "KSh 96,400", pct: "7%", color: "#0F766E" },
-  { label: "Logistics", value: "KSh 54,600", pct: "4%", color: "#B45309" },
-  { label: "Other", value: "KSh 29,000", pct: "2%", color: "#64748B" },
+  { label: "Stock purchases", value: "KSh 812,000", pct: "58%", color: "#063D24" },
+  { label: "Payroll", value: "KSh 402,150", pct: "29%", color: "#0A5C36" },
+  { label: "Rent & utilities", value: "KSh 96,400", pct: "7%", color: "#15803D" },
+  { label: "Logistics", value: "KSh 54,600", pct: "4%", color: "#22C55E" },
+  { label: "Other", value: "KSh 29,000", pct: "2%", color: "#94A3B8" },
 ];
 
 const STATEMENTS = [
@@ -122,7 +124,7 @@ export default function ReportsScreen() {
             ]}
             actionLabel="Export summary"
             onAction={() => showToast("Preparing summary…")}
-            colors={GRADIENT_INDIGO}
+            colors={GRADIENT_FOREST}
           />
 
           <StatCard
@@ -226,7 +228,7 @@ export default function ReportsScreen() {
               label="Export Report (PDF)"
               icon={<Download size={16} color="#FFFFFF" />}
               onPress={() => showToast("Preparing PDF export…")}
-              colors={GRADIENT_INDIGO}
+              colors={GRADIENT_FOREST}
             />
           </View>
         </View>
