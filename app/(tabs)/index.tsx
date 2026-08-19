@@ -1,98 +1,274 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import {
+  Lexend_400Regular,
+  Lexend_600SemiBold,
+  Lexend_700Bold,
+  useFonts,
+} from "@expo-google-fonts/lexend";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  Animated,
+  Dimensions,
+  Image,
+  Pressable,
+  Text,
+  View,
+} from "react-native";
+import type { OnboardingSlide } from "../../constants/onboarding";
+import slides from "../../constants/onboarding";
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+const { width, height } = Dimensions.get("window");
 
-export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
+export default function DashboardScreen() {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const scrollX = useRef(new Animated.Value(0)).current;
+  const flatListRef = useRef<Animated.FlatList<OnboardingSlide>>(null);
+  const router = useRouter();
+
+  const [fontsLoaded] = useFonts({
+    Lexend_400Regular,
+    Lexend_600SemiBold,
+    Lexend_700Bold,
+  });
+
+  useEffect(() => {
+    const check = async () => {
+      const seen = await AsyncStorage.getItem("hasSeenOnboarding");
+      if (seen === "true") {
+        router.replace("/(auth)/login");
+      }
+    };
+    check();
+  }, []);
+
+  const handleFinish = async () => {
+    await AsyncStorage.setItem("hasSeenOnboarding", "true");
+    router.replace("/(auth)/login");
+  };
+
+  const handleNext = () => {
+    if (activeIndex < slides.length - 1) {
+      flatListRef.current?.scrollToIndex({ index: activeIndex + 1 });
+    } else {
+      handleFinish();
+    }
+  };
+
+  const onViewableItemsChanged = useRef(
+    ({ viewableItems }: { viewableItems: { index: number | null }[] }) => {
+      if (viewableItems.length > 0 && viewableItems[0].index !== null) {
+        setActiveIndex(viewableItems[0].index);
+      }
+    },
+  ).current;
+
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 50 }).current;
+
+  if (!fontsLoaded) return null;
+
+  const renderItem = ({ item }: { item: OnboardingSlide }) => (
+    <View style={{ width, flex: 1, backgroundColor: "#F9FAFB" }}>
+      <View style={{ height: height * 0.77, width, overflow: "hidden" }}>
         <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
+          source={item.image}
+          style={{ position: "absolute", width: "100%", height: "100%" }}
+          resizeMode="cover"
+          blurRadius={20}
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+        <View
+          style={{
+            position: "absolute",
+            width: "100%",
+            height: "100%",
+            backgroundColor: "rgba(6, 61, 36, 0.35)", // primary-dark @ 35%
+          }}
+        />
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+        <View
+          style={{
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+            paddingHorizontal: 20,
+            paddingVertical: 16,
+          }}
+        >
+          <View
+            style={{
+              width: width * 0.86,
+              aspectRatio: 1,
+              borderRadius: 20,
+              overflow: "hidden",
+              borderWidth: 2,
+              borderColor: "rgba(255, 255, 255, 0.85)",
+            }}
+          >
+            <Image
+              source={item.image}
+              style={{ width: "100%", height: "100%" }}
+              resizeMode="cover"
+            />
+          </View>
+        </View>
+      </View>
+
+      {/* Bottom Content Area */}
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: "#FFFFFF",
+          paddingHorizontal: 24,
+          paddingTop: 32,
+          borderTopLeftRadius: 28,
+          borderTopRightRadius: 28,
+          marginTop: -20,
+          elevation: 4,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 6,
+        }}
+      >
+        <Text
+          style={{
+            fontFamily: "Lexend_700Bold",
+            fontSize: 22,
+            color: "#111827",
+            textAlign: "center",
+            marginBottom: 12,
+          }}
+        >
+          {item.title}
+        </Text>
+        <Text
+          style={{
+            fontFamily: "Lexend_400Regular",
+            fontSize: 15,
+            color: "#4B5563",
+            textAlign: "center",
+            lineHeight: 22,
+          }}
+        >
+          {item.text}
+        </Text>
+      </View>
+    </View>
+  );
+
+  return (
+    <View style={{ flex: 1, backgroundColor: "#F9FAFB" }}>
+      <Animated.FlatList
+        ref={flatListRef}
+        data={slides}
+        keyExtractor={(item) => item.key}
+        renderItem={renderItem}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        bounces={false}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+          { useNativeDriver: false },
+        )}
+        scrollEventThrottle={16}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig}
+      />
+
+      {/* Pagination Dots */}
+      <View
+        pointerEvents="none"
+        style={{
+          position: "absolute",
+          bottom: 90,
+          width,
+          flexDirection: "row",
+          justifyContent: "center",
+        }}
+      >
+        {slides.map((_, i) => {
+          const dotWidth = scrollX.interpolate({
+            inputRange: [(i - 1) * width, i * width, (i + 1) * width],
+            outputRange: [8, 24, 8],
+            extrapolate: "clamp",
+          });
+          const opacity = scrollX.interpolate({
+            inputRange: [(i - 1) * width, i * width, (i + 1) * width],
+            outputRange: [0.4, 1, 0.4],
+            extrapolate: "clamp",
+          });
+
+          return (
+            <Animated.View
+              key={i}
+              style={{
+                width: dotWidth,
+                height: 8,
+                borderRadius: 4,
+                marginHorizontal: 4,
+                opacity,
+                backgroundColor: "#0A5C36",
+              }}
+            />
+          );
+        })}
+      </View>
+
+      {/* Action Buttons */}
+      <View
+        style={{
+          position: "absolute",
+          bottom: 24,
+          width,
+          paddingHorizontal: 20,
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <Pressable
+          onPress={handleFinish}
+          style={{
+            paddingHorizontal: 18,
+            paddingVertical: 12,
+            borderWidth: 1.5,
+            borderColor: "#D1D5DB",
+            borderRadius: 10,
+            backgroundColor: "#FFFFFF",
+          }}
+        >
+          <Text
+            style={{
+              fontFamily: "Lexend_600SemiBold",
+              fontSize: 15,
+              color: "#4B5563",
+            }}
+          >
+            Skip
+          </Text>
+        </Pressable>
+
+        <Pressable
+          onPress={handleNext}
+          style={{
+            paddingHorizontal: 24,
+            paddingVertical: 12,
+            backgroundColor: "#0A5C36",
+            borderRadius: 10,
+          }}
+        >
+          <Text
+            style={{
+              fontFamily: "Lexend_600SemiBold",
+              fontSize: 15,
+              color: "#FFFFFF",
+            }}
+          >
+            {activeIndex === slides.length - 1 ? "Get Started" : "Next"}
+          </Text>
+        </Pressable>
+      </View>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
