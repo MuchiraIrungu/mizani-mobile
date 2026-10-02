@@ -1,8 +1,20 @@
 import { CheckCircle2, Send } from "lucide-react-native";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { ScrollView, StatusBar, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { ErrorBanner } from "@/components/auth/AuthUI";
+import { useNotificationItems } from "@/hooks/useNotificationItems";
+import {
+  createPayrollRun,
+  generatePayrollEntries,
+  getPayrollRuns,
+} from "@/services/dashboardDataService";
+import { useAuthStore } from "@/store/authStore";
+import { PayrollEntryResponse, PayrollRunResponse } from "@/types/employee";
+import { ksh } from "@/utils/dashboardStats";
+import { apiError, headerProps } from "@/utils/header";
+import { useFocusEffect } from "expo-router";
 import {
   AlertBanner,
   AppHeader,
@@ -27,104 +39,115 @@ import {
   StatCard,
   SURFACE,
   ToastHost,
-  type NotificationItem,
   type SearchItem,
 } from "../../components/dashboard/dashboardUI";
 
 /* Payroll — the month's payroll run, statutory deductions and the employee
    register with per-person net pay. */
 
-type Employee = {
-  id: string;
-  name: string;
-  role: string;
-  net: string;
-  status: "paid" | "pending";
-};
-
-const EMPLOYEES: Employee[] = [
-  {
-    id: "1",
-    name: "Grace Achieng",
-    role: "Branch supervisor · KSh 78,000 gross",
-    net: "KSh 61,420",
-    status: "paid",
-  },
-  {
-    id: "2",
-    name: "Peter Kimani",
-    role: "Store keeper · KSh 46,000 gross",
-    net: "KSh 38,910",
-    status: "paid",
-  },
-  {
-    id: "3",
-    name: "Amina Hassan",
-    role: "Till attendant · KSh 34,000 gross",
-    net: "KSh 29,480",
-    status: "paid",
-  },
-  {
-    id: "4",
-    name: "Joseph Otieno",
-    role: "Driver · KSh 32,000 gross",
-    net: "KSh 27,940",
-    status: "pending",
-  },
-  {
-    id: "5",
-    name: "Mercy Wairimu",
-    role: "Accounts clerk · KSh 52,000 gross",
-    net: "KSh 43,180",
-    status: "pending",
-  },
-];
-
-const DEDUCTIONS = [
-  { label: "PAYE", detail: "Pay-as-you-earn, filed with KRA", value: "KSh 74,532" },
-  { label: "NSSF", detail: "Tier I & II employee + employer", value: "KSh 21,600" },
-  { label: "SHIF", detail: "2.75% of gross pay", value: "KSh 13,255" },
-  { label: "Housing Levy", detail: "1.5% of gross pay", value: "KSh 7,230" },
-];
-
 const STATUS_FILTERS = ["All", "Paid", "Pending"];
 
-const NOTIFICATIONS: NotificationItem[] = [
-  {
-    id: "1",
-    title: "PAYE return for August is due on 9 Sep",
-    time: "Today, 08:00",
-    tone: "warning",
-  },
-  {
-    id: "2",
-    title: "2 employees are still awaiting payment",
-    time: "Yesterday",
-    tone: "danger",
-  },
+const FULL_MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
-
-const SEARCH_DATA: SearchItem[] = EMPLOYEES.map((e) => ({
-  id: e.id,
-  title: e.name,
-  subtitle: e.role,
-}));
+const monthOf = (iso: string) => {
+  const d = new Date(`${iso}T00:00:00`);
+  return `${FULL_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+};
+const isoDate = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 export default function PayrollScreen() {
-  const [month, setMonth] = useState("August 2026");
-  const [branch, setBranch] = useState("Nairobi Branch");
+  const user = useAuthStore((s) => s.user);
+  const notifications = useNotificationItems();
+  const [runs, setRuns] = useState<PayrollRunResponse[]>([]);
+  const [monthSel, setMonthSel] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("All");
   const [searchVisible, setSearchVisible] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
-  const employees = EMPLOYEES.filter((e) =>
-    statusFilter === "All" ? true : e.status === statusFilter.toLowerCase(),
+  const load = useCallback(async () => {
+    try {
+      const r = await getPayrollRuns();
+      setRuns([...r].sort((a, b) => b.payoutDate.localeCompare(a.payoutDate)));
+      setError(null);
+    } catch (e) {
+      setError(apiError(e, "Failed to load payroll"));
+    }
+  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load]),
   );
-  const pending = EMPLOYEES.filter((e) => e.status === "pending").length;
+
+  const run =
+    (monthSel
+      ? runs.find((r) => monthOf(r.payoutDate) === monthSel)
+      : undefined) ??
+    runs[0] ??
+    null;
+  const month = run ? monthOf(run.payoutDate) : "No payroll run";
+  const entries = run?.entries ?? [];
+  const sumOf = (f: (e: PayrollEntryResponse) => number) =>
+    entries.reduce((s, e) => s + f(e), 0);
+  const gross = sumOf((e) => e.grossPay);
+  const net = sumOf((e) => e.netPay);
+  const paye = sumOf((e) => e.payeDeduction);
+  const nssf = sumOf((e) => e.nssfDeduction);
+  const sha = sumOf((e) => e.shaDeduction);
+  const deductions = paye + nssf + sha;
+  const pending = entries.filter((e) => e.status === "PENDING").length;
+
+  const shown = entries.filter(
+    (e) => statusFilter === "All" || e.status === statusFilter.toUpperCase(),
+  );
+  const searchData: SearchItem[] = entries.map((e) => ({
+    id: e.id,
+    title: e.employeeName,
+    subtitle: `Net KSh ${ksh(e.netPay)}`,
+  }));
+  const monthOptions = [...new Set(runs.map((r) => monthOf(r.payoutDate)))];
+
+  const handleRun = async () => {
+    if (busy) return;
+    const today = new Date();
+    const current = `${FULL_MONTHS[today.getMonth()]} ${today.getFullYear()}`;
+    if (runs.some((r) => monthOf(r.payoutDate) === current))
+      return showToast(`A ${current} run already exists`);
+    setBusy(true);
+    try {
+      const created = await createPayrollRun({
+        payoutDate: isoDate(
+          new Date(today.getFullYear(), today.getMonth() + 1, 0),
+        ),
+      });
+      await generatePayrollEntries(created.id);
+      await load();
+      setMonthSel(null);
+      showToast("Payroll run created");
+    } catch (e) {
+      showToast(apiError(e, "Could not run payroll"));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: SURFACE }}>
       <StatusBar barStyle="dark-content" backgroundColor={SURFACE} />
-
       <ScrollView
         className="flex-1"
         contentContainerStyle={{
@@ -133,57 +156,47 @@ export default function PayrollScreen() {
         }}
         showsVerticalScrollIndicator={false}
       >
-        <AppHeader
-          initials="WM"
-          name="Wanjiku Mwangi"
-          role="Owner · Mizani Trading Co."
-          notifications={NOTIFICATIONS}
-        />
+        <AppHeader {...headerProps(user)} notifications={notifications} />
 
         <PillRow>
-          <SelectorPill
-            label={branch}
-            options={[
-              "Nairobi Branch",
-              "Mombasa Branch",
-              "Kisumu Branch",
-              "All Branches",
-            ]}
-            onSelect={setBranch}
-          />
-          <SelectorPill
-            label={month}
-            options={["June 2026", "July 2026", "August 2026"]}
-            onSelect={setMonth}
-          />
+          {monthOptions.length > 0 && (
+            <SelectorPill
+              label={month}
+              options={monthOptions}
+              onSelect={setMonthSel}
+            />
+          )}
           <SearchTrigger onPress={() => setSearchVisible(true)} />
         </PillRow>
 
         <PageTitle
           title="Payroll"
-          subtitle={`${branch} · ${month} · ${EMPLOYEES.length} employees`}
+          subtitle={`${month} · ${entries.length} employees`}
         />
+        {!!error && <ErrorBanner message={error} />}
 
         <View className="px-4">
           {pending > 0 && (
             <AlertBanner
               tone="warning"
               title={`${pending} employees not yet paid`}
-              description="Their August net pay has been computed but no payment has been released. PAYE for the month is due on 9 Sep 2026."
+              description="Net pay has been computed but no payment has been released."
               actionLabel="Release payments"
               onAction={() => showToast("Payment release coming soon")}
             />
           )}
 
           <GradientStatCard
-            title="August Payroll Run"
-            badgeLabel="Due 9 Sep"
-            value="KSh 402,150"
-            helper="Gross pay across 5 employees, before statutory deductions"
+            title={`${month} Payroll Run`}
+            badgeLabel={run?.status ?? "—"}
+            value={`KSh ${ksh(gross)}`}
+            helper={`Gross pay across ${entries.length} employees, before statutory deductions`}
             rows={[
-              { label: "Net pay", value: "KSh 200,930" },
-              { label: "Statutory deductions", value: "KSh 116,617" },
-              { label: "Employer contributions", value: "KSh 84,603" },
+              { label: "Net pay", value: `KSh ${ksh(net)}` },
+              {
+                label: "Statutory deductions",
+                value: `KSh ${ksh(deductions)}`,
+              },
             ]}
             actionLabel="Export payslips"
             onAction={() => showToast("Preparing payslips…")}
@@ -194,64 +207,72 @@ export default function PayrollScreen() {
             title="Statutory Deductions"
             badgeLabel="Filed separately"
             badgeTone="warning"
-            value="KSh 116,617"
-            helper="PAYE, NSSF, SHIF and the housing levy for August 2026"
+            value={`KSh ${ksh(deductions)}`}
+            helper={`PAYE, NSSF and SHA for ${month}`}
             footerStats={[
-              { label: "PAYE", value: "74,532" },
-              { label: "NSSF", value: "21,600" },
-              { label: "SHIF", value: "13,255" },
+              { label: "PAYE", value: ksh(paye) },
+              { label: "NSSF", value: ksh(nssf) },
+              { label: "SHA", value: ksh(sha) },
             ]}
           />
 
           <DataCard
             title="Deduction Breakdown"
-            subtitle="Employee and employer portions combined"
+            subtitle="Employee deductions for the run"
           >
-            {DEDUCTIONS.map((d, i) => (
-              <DataRow
-                key={d.label}
-                label={d.label}
-                detail={d.detail}
-                value={d.value}
-                first={i === 0}
-              />
-            ))}
-            <DataRow label="Total" value="KSh 116,617" emphasis />
+            <DataRow
+              label="PAYE"
+              detail="Pay-as-you-earn, filed with KRA"
+              value={`KSh ${ksh(paye)}`}
+              first
+            />
+            <DataRow
+              label="NSSF"
+              detail="National Social Security Fund"
+              value={`KSh ${ksh(nssf)}`}
+            />
+            <DataRow
+              label="SHA"
+              detail="Social Health Authority"
+              value={`KSh ${ksh(sha)}`}
+            />
+            <DataRow label="Total" value={`KSh ${ksh(deductions)}`} emphasis />
           </DataCard>
 
           <View style={{ marginBottom: SPACE_4 }}>
             <PrimaryButton
-              label="Run September payroll"
+              label="Run payroll"
               icon={<Send size={16} color="#FFFFFF" />}
-              onPress={() => showToast("Payroll run coming soon")}
+              onPress={handleRun}
               colors={GRADIENT_FOREST}
             />
           </View>
 
           <SectionHeading
             title="Employee Register"
-            subtitle={`${employees.length} shown · net pay for ${month}`}
+            subtitle={`${shown.length} shown · net pay for ${month}`}
           />
-
           <FilterChips
             options={STATUS_FILTERS}
             value={statusFilter}
             onChange={setStatusFilter}
           />
 
-          {employees.map((e) => (
+          {shown.map((e) => (
             <InfoRow
               key={e.id}
-              initials={e.name
+              initials={e.employeeName
                 .split(" ")
                 .map((w) => w[0])
                 .slice(0, 2)
                 .join("")}
-              title={e.name}
-              subtitle={`${e.role} · net ${e.net}`}
-              trailingLabel={e.status === "paid" ? "Paid" : "Pending"}
-              trailingTone={e.status === "paid" ? "positive" : "warning"}
-              onPress={() => showToast(`${e.name} · payslip coming soon`)}
+              title={e.employeeName}
+              subtitle={`Gross KSh ${ksh(e.grossPay)} · net KSh ${ksh(e.netPay)}`}
+              trailingLabel={e.status === "PAID" ? "Paid" : "Pending"}
+              trailingTone={e.status === "PAID" ? "positive" : "warning"}
+              onPress={() =>
+                showToast(`${e.employeeName} · payslip coming soon`)
+              }
             />
           ))}
 
@@ -259,7 +280,7 @@ export default function PayrollScreen() {
             <PrimaryButton
               label="Mark all as paid"
               icon={<CheckCircle2 size={16} color="#FFFFFF" />}
-              onPress={() => showToast("Marked all employees as paid")}
+              onPress={() => showToast("Payment sending coming soon")}
               colors={GRADIENT_FOREST}
             />
           </View>
@@ -267,15 +288,13 @@ export default function PayrollScreen() {
       </ScrollView>
 
       <BottomNav />
-
       <SearchModal
         visible={searchVisible}
         onClose={() => setSearchVisible(false)}
-        data={SEARCH_DATA}
+        data={searchData}
         placeholder="Search employees…"
         onSelect={(item) => showToast(item.title)}
       />
-
       <ToastHost />
     </SafeAreaView>
   );

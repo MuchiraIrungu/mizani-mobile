@@ -2,24 +2,28 @@
   "expo": {
     "name": "mobile-frontend",
     "slug": "mobile-frontend",
+    "updates": {
+      "url": "https://u.expo.dev/8022200c-9a6c-4869-90bc-f14422e03f85"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "mobilefrontend",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.muchirusorganization.mobilefrontend"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "backgroundColor": "#0A5C36",
+        "foregroundImage": "./assets/images/appicon.jpeg"
       },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.muchirusorganization.mobilefrontend"
     },
     "web": {
       "output": "static",
@@ -40,11 +44,22 @@
           }
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-secure-store",
+      "expo-image",
+      "expo-status-bar",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "8022200c-9a6c-4869-90bc-f14422e03f85"
+      }
+    },
+    "owner": "muchirus-organization"
   }
 }

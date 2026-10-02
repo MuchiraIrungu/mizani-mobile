@@ -1,11 +1,25 @@
 import { Plus } from "lucide-react-native";
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ScrollView, StatusBar, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { getInvoices, getNotifications } from "@/services/dashboardDataService";
+import { useAuthStore } from "@/store/authStore";
+import type { NotificationResponse } from "@/types/dashboard";
+import type { InvoiceResponse } from "@/types/sales";
+import {
+  fmtRange,
+  getRange,
+  ksh,
+  RANGE_OPTIONS,
+  toNotificationItem,
+} from "@/utils/dashboardStats";
+import { toInvoiceView, type InvoiceView } from "@/utils/invoiceStats";
+import { useFocusEffect, useRouter } from "expo-router";
 import {
   AppHeader,
   BottomNav,
+  ErrorBanner,
   FilterChips,
   GRADIENT_FOREST,
   GradientStatCard,
@@ -25,111 +39,103 @@ import {
   StatCard,
   SURFACE,
   ToastHost,
-  type Invoice,
   type NotificationItem,
   type SearchItem,
 } from "../../components/dashboard/dashboardUI";
 
-/* Sales — invoice book with outstanding/overdue headline figures, status
-   filters and the full invoice list. */
-
-const INVOICES: Invoice[] = [
-  {
-    id: "1",
-    customer: "Sokoni Retail Group",
-    reference: "INV-2043",
-    dueDate: "30 Aug 2026",
-    statusLabel: "Due in 14 days",
-    amount: "KSh 121,034",
-    status: "pending",
-  },
-  {
-    id: "2",
-    customer: "Karibu Foods Ltd",
-    reference: "INV-2042",
-    dueDate: "28 Aug 2026",
-    statusLabel: "Due in 12 days",
-    amount: "KSh 151,728",
-    status: "pending",
-  },
-  {
-    id: "3",
-    customer: "Jenga Hardware",
-    reference: "INV-2038",
-    dueDate: "5 Aug 2026",
-    statusLabel: "11 days overdue",
-    amount: "KSh 131,776",
-    status: "overdue",
-  },
-  {
-    id: "4",
-    customer: "Afya Pharma Chemist",
-    reference: "INV-2035",
-    dueDate: "1 Aug 2026",
-    statusLabel: "15 days overdue",
-    amount: "KSh 74,124",
-    status: "overdue",
-  },
-  {
-    id: "5",
-    customer: "Rift Logistics",
-    reference: "INV-2031",
-    dueDate: "24 Jul 2026",
-    statusLabel: "Settled 21 Jul 2026",
-    amount: "KSh 180,090",
-    status: "paid",
-  },
-  {
-    id: "6",
-    customer: "Tuskys Fresh — Ngong Road",
-    reference: "INV-2028",
-    dueDate: "18 Jul 2026",
-    statusLabel: "Settled 17 Jul 2026",
-    amount: "KSh 125,900",
-    status: "paid",
-  },
-];
-
-const CUSTOMERS = [
-  { name: "Sokoni Retail Group", detail: "12 invoices · Net 30", owed: "KSh 121,034" },
-  { name: "Karibu Foods Ltd", detail: "8 invoices · Net 30", owed: "KSh 151,728" },
-  { name: "Jenga Hardware", detail: "5 invoices · Net 14", owed: "KSh 131,776" },
-];
-
 const STATUS_FILTERS = ["All", "Pending", "Overdue", "Paid"];
 
-const NOTIFICATIONS: NotificationItem[] = [
-  {
-    id: "1",
-    title: "New invoice #INV-2044 created",
-    time: "2 min ago",
-    tone: "positive",
-  },
-  {
-    id: "2",
-    title: "INV-2035 is now 15 days overdue",
-    time: "1 hour ago",
-    tone: "danger",
-  },
-];
-
-const SEARCH_DATA: SearchItem[] = INVOICES.map((i) => ({
-  id: i.id,
-  title: `${i.reference} — ${i.customer}`,
-  subtitle: `${i.amount} · ${i.statusLabel}`,
-}));
+const sumOf = (vs: InvoiceView[]) => vs.reduce((s, v) => s + v.amount, 0);
 
 export default function SalesScreen() {
+  const user = useAuthStore((s) => s.user);
+  const [invoices, setInvoices] = useState<InvoiceResponse[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [now, setNow] = useState(() => new Date());
+  const [error, setError] = useState<string | null>(null);
+  const [dateRange, setDateRange] = useState("This Month");
   const [topTab, setTopTab] = useState("Invoices");
   const [statusFilter, setStatusFilter] = useState("All");
   const [searchVisible, setSearchVisible] = useState(false);
-  const [branch, setBranch] = useState("Nairobi Branch");
-  const [dateRange, setDateRange] = useState("1 – 31 Aug 2026");
 
-  const filteredInvoices = INVOICES.filter((inv) =>
-    statusFilter === "All" ? true : inv.status === statusFilter.toLowerCase(),
+  const router = useRouter();
+
+  const load = useCallback(async () => {
+    try {
+      setError(null);
+      const [inv, notes] = await Promise.all([
+        getInvoices(),
+        getNotifications().catch((): NotificationResponse[] => []),
+      ]);
+      setInvoices(inv);
+      setNotifications(notes.filter((n) => !n.readAt).map(toNotificationItem));
+      setNow(new Date());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load invoices");
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load]),
   );
-  const outstanding = INVOICES.filter((i) => i.status !== "paid");
+
+  const range = useMemo(() => getRange(dateRange, now), [dateRange, now]);
+
+  const views = useMemo(
+    () =>
+      invoices
+        .filter((i) => i.status !== "VOID")
+        .map((i) => toInvoiceView(i, now))
+        .filter((v) => {
+          const t = new Date(v.createdAt).getTime();
+          return t >= range.start.getTime() && t <= range.end.getTime();
+        }),
+    [invoices, now, range],
+  );
+
+  const pending = views.filter((v) => v.status === "pending");
+  const overdue = views.filter((v) => v.status === "overdue");
+  const paid = views.filter((v) => v.status === "paid");
+  const outstandingTotal = sumOf(pending) + sumOf(overdue);
+  const oldest = overdue.reduce<InvoiceView | null>(
+    (o, v) => (!o || v.daysOverdue > o.daysOverdue ? v : o),
+    null,
+  );
+
+  const filtered = views.filter(
+    (v) => statusFilter === "All" || v.status === statusFilter.toLowerCase(),
+  );
+
+  const customers = useMemo(() => {
+    const map = new Map<
+      string,
+      { name: string; count: number; owed: number }
+    >();
+    for (const v of views) {
+      if (v.status === "paid") continue;
+      const c = map.get(v.row.customer) ?? {
+        name: v.row.customer,
+        count: 0,
+        owed: 0,
+      };
+      c.count += 1;
+      c.owed += v.amount;
+      map.set(v.row.customer, c);
+    }
+    return [...map.values()].sort((a, b) => b.owed - a.owed);
+  }, [views]);
+
+  const searchData: SearchItem[] = useMemo(
+    () =>
+      views.map((v) => ({
+        id: v.row.id,
+        title: `${v.row.reference} — ${v.row.customer}`,
+        subtitle: `${v.row.amount} · ${v.row.statusLabel}`,
+      })),
+    [views],
+  );
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: SURFACE }}>
@@ -144,26 +150,18 @@ export default function SalesScreen() {
         showsVerticalScrollIndicator={false}
       >
         <AppHeader
-          initials="WM"
-          name="Wanjiku Mwangi"
-          role="Owner · Mizani Trading Co."
-          notifications={NOTIFICATIONS}
+          initials={
+            `${user?.firstName?.[0] ?? ""}${user?.lastName?.[0] ?? ""}` || "??"
+          }
+          name={`${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim()}
+          role={user?.roleName ?? ""}
+          notifications={notifications}
         />
 
         <PillRow>
           <SelectorPill
-            label={branch}
-            options={[
-              "Nairobi Branch",
-              "Mombasa Branch",
-              "Kisumu Branch",
-              "All Branches",
-            ]}
-            onSelect={setBranch}
-          />
-          <SelectorPill
             label={dateRange}
-            options={["Today", "This Week", "1 – 31 Aug 2026", "Custom range"]}
+            options={RANGE_OPTIONS}
             onSelect={setDateRange}
           />
           <SearchTrigger onPress={() => setSearchVisible(true)} />
@@ -171,19 +169,20 @@ export default function SalesScreen() {
 
         <PageTitle
           title="Sales"
-          subtitle={`${branch} · ${dateRange} · ${INVOICES.length} invoices`}
+          subtitle={`${fmtRange(range)} · ${views.length} invoices`}
         />
+        {!!error && <ErrorBanner message={error} />}
 
         <View className="px-4">
           <GradientStatCard
             title="Total Outstanding"
-            badgeLabel={`${outstanding.length} invoices`}
-            value="KSh 478,662"
-            helper="Across 2 pending and 2 overdue invoices"
+            badgeLabel={`${pending.length + overdue.length} invoices`}
+            value={`KSh ${ksh(outstandingTotal)}`}
+            helper={`Across ${pending.length} pending and ${overdue.length} overdue invoices`}
             footerStats={[
-              { label: "PENDING", value: "272,762" },
-              { label: "OVERDUE", value: "205,900" },
-              { label: "PAID (MTD)", value: "305,990" },
+              { label: "PENDING", value: ksh(sumOf(pending)) },
+              { label: "OVERDUE", value: ksh(sumOf(overdue)) },
+              { label: "PAID", value: ksh(sumOf(paid)) },
             ]}
             colors={GRADIENT_FOREST}
           />
@@ -191,13 +190,24 @@ export default function SalesScreen() {
           <StatCard
             title="Overdue"
             tone="danger"
-            badgeLabel="43% of outstanding"
-            value="KSh 205,900"
-            helper="Oldest unpaid invoice is 15 days past its due date"
+            badgeLabel={`${
+              outstandingTotal
+                ? Math.round((sumOf(overdue) / outstandingTotal) * 100)
+                : 0
+            }% of outstanding`}
+            value={`KSh ${ksh(sumOf(overdue))}`}
+            helper={
+              oldest
+                ? `Oldest unpaid invoice is ${oldest.daysOverdue} days past its due date`
+                : "No overdue invoices"
+            }
             footerStats={[
-              { label: "INVOICES", value: "2" },
-              { label: "OLDEST", value: "15 days" },
-              { label: "AT RISK", value: "74,124" },
+              { label: "INVOICES", value: String(overdue.length) },
+              {
+                label: "OLDEST",
+                value: oldest ? `${oldest.daysOverdue} days` : "—",
+              },
+              { label: "AT RISK", value: oldest ? ksh(oldest.amount) : "0" },
             ]}
           />
 
@@ -205,7 +215,7 @@ export default function SalesScreen() {
             <PrimaryButton
               label="New Invoice"
               icon={<Plus size={16} color="#FFFFFF" />}
-              onPress={() => showToast("Invoice creation coming soon")}
+              onPress={() => router.push("/(dashboard)/new-invoice")}
               colors={GRADIENT_FOREST}
             />
           </View>
@@ -220,18 +230,18 @@ export default function SalesScreen() {
             <>
               <SectionHeading
                 title="All invoices"
-                subtitle={`${filteredInvoices.length} shown`}
+                subtitle={`${filtered.length} shown`}
               />
               <FilterChips
                 options={STATUS_FILTERS}
                 value={statusFilter}
                 onChange={setStatusFilter}
               />
-              {filteredInvoices.map((inv) => (
+              {filtered.map((v) => (
                 <InvoiceRow
-                  key={inv.id}
-                  invoice={inv}
-                  onPress={() => showToast(`${inv.reference} · detail soon`)}
+                  key={v.row.id}
+                  invoice={v.row}
+                  onPress={() => showToast(`${v.row.reference} · detail soon`)}
                 />
               ))}
             </>
@@ -239,18 +249,18 @@ export default function SalesScreen() {
             <>
               <SectionHeading
                 title="Customers"
-                subtitle={`${CUSTOMERS.length} accounts with a balance`}
+                subtitle={`${customers.length} accounts with a balance`}
               />
-              {CUSTOMERS.map((c) => (
+              {customers.map((c) => (
                 <InvoiceRow
                   key={c.name}
                   invoice={{
                     id: c.name,
                     customer: c.name,
-                    reference: c.detail,
+                    reference: `${c.count} open invoice${c.count > 1 ? "s" : ""}`,
                     dueDate: "",
                     statusLabel: "Balance outstanding",
-                    amount: c.owed,
+                    amount: `KSh ${ksh(c.owed)}`,
                     status: "pending",
                   }}
                   onPress={() => showToast(`${c.name} · detail soon`)}
@@ -266,7 +276,7 @@ export default function SalesScreen() {
       <SearchModal
         visible={searchVisible}
         onClose={() => setSearchVisible(false)}
-        data={SEARCH_DATA}
+        data={searchData}
         placeholder="Search invoices, customers…"
         onSelect={(item) => showToast(item.title)}
       />

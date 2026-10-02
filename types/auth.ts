@@ -10,15 +10,19 @@ export interface AuthTokens {
 
 export interface User {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
-  role: "owner" | "staff" | "accountant";
+  phone: string;
+  businessId: number | null;
   branchId: string;
+  roleName: string | null;
 }
 
 export interface LoginResponse {
+  accessToken: string;
+  refreshToken: string;
   user: User;
-  tokens: AuthTokens;
 }
 
 export interface RegisterRequest {
@@ -31,6 +35,14 @@ export interface RegisterRequest {
 }
 
 export interface RegisterResponse {
-  user: User;
-  tokens: AuthTokens;
+  data: {
+    id: number;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    businessId: number | null;
+    roleName: string | null;
+  };
+  status: number;
 }

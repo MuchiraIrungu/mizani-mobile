@@ -2,8 +2,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { usePathname, useRouter } from "expo-router";
 import {
   AlertTriangle,
-  Bell,
   BarChart3,
+  Bell,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -12,8 +12,8 @@ import {
   Info,
   LayoutGrid,
   LogOut,
-  MoreHorizontal,
   Moon,
+  MoreHorizontal,
   Package,
   Receipt,
   Search,
@@ -1178,7 +1178,10 @@ export function PageTitle({
   subtitle?: string;
 }) {
   return (
-    <View className="px-4" style={{ marginTop: SPACE_5, marginBottom: SPACE_4 }}>
+    <View
+      className="px-4"
+      style={{ marginTop: SPACE_5, marginBottom: SPACE_4 }}
+    >
       <Text
         className="text-[26px]"
         style={{ color: TEXT_PRIMARY, fontFamily: FONT_BOLD }}
@@ -1789,7 +1792,7 @@ export function StatusPill({
     danger: { bg: DANGER_BG, fg: DANGER },
     neutral: { bg: SURFACE, fg: TEXT_SECONDARY },
   };
-  const c = toneColors[tone];
+  const c = toneColors[tone] ?? toneColors.neutral;
   return (
     <View
       className="px-2.5 py-1 rounded-[999px] mr-2"
@@ -1938,7 +1941,10 @@ export function InvoiceRow({
           {invoice.reference} · {invoice.statusLabel}
         </Text>
         <View className="flex-row">
-          <StatusPill label={INVOICE_STATUS_LABEL[invoice.status]} tone={tone} />
+          <StatusPill
+            label={INVOICE_STATUS_LABEL[invoice.status]}
+            tone={tone}
+          />
         </View>
       </View>
 

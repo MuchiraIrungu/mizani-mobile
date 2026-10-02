@@ -5,6 +5,7 @@ import {
   FormCard,
   GoogleButton,
 } from "@/components/auth/AuthUI";
+import { login } from "@/services/authService";
 import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -34,23 +35,22 @@ export default function LoginScreen() {
   const setSession = useAuthStore((state) => state.setSession);
 
   const handleLogin = async () => {
-    {
-      /*if (loading) return;
+    if (loading) return;
     setError(null);
     setLoading(true);
-
     try {
       const data = await login({ email, password });
-      const { user, tokens } = data;
-      setSession(user, tokens);
-      router.replace("/(tabs)");
+      setSession(data.user, {
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken,
+      });
+      router.replace("/(dashboard)/main");
     } catch (err: any) {
       setError(err.response?.data?.message || "Invalid credentials");
+      //router.replace("/(dashboard)/main");
     } finally {
       setLoading(false);
-    }*/
     }
-    router.replace("/(dashboard)/main");
   };
 
   return (

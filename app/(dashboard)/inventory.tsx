@@ -1,8 +1,17 @@
 import { Boxes, Download, Plus } from "lucide-react-native";
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ScrollView, StatusBar, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { ErrorBanner } from "@/components/auth/AuthUI";
+import { useNotificationItems } from "@/hooks/useNotificationItems";
+import { getProducts, getSuppliers } from "@/services/dashboardDataService";
+import { useAuthStore } from "@/store/authStore";
+import { ProductResponse } from "@/types/product";
+import { SupplierResponse } from "@/types/supplier";
+import { ksh } from "@/utils/dashboardStats";
+import { apiError, headerProps } from "@/utils/header";
+import { useFocusEffect, useRouter } from "expo-router";
 import {
   AlertBanner,
   AppHeader,
@@ -19,6 +28,7 @@ import {
   PageTitle,
   PillRow,
   PrimaryButton,
+  SearchItem,
   SearchModal,
   SearchTrigger,
   SelectorPill,
@@ -33,8 +43,6 @@ import {
   TEXT_PRIMARY,
   TEXT_SECONDARY,
   ToastHost,
-  type NotificationItem,
-  type SearchItem,
 } from "../../components/dashboard/dashboardUI";
 
 /* Inventory — stock on hand grouped by category, with reorder warnings. */
@@ -54,98 +62,6 @@ type Category = {
   name: string;
   items: InventoryItem[];
 };
-
-const CATEGORIES: Category[] = [
-  {
-    id: "dry",
-    name: "DRY GOODS",
-    items: [
-      {
-        id: "1",
-        name: "Maize flour 2kg — Jogoo",
-        sku: "DRY-MZ-2000",
-        supplier: "Unga Group",
-        quantity: "184",
-        unit: "packets",
-        status: "in-stock",
-      },
-      {
-        id: "2",
-        name: "Rice 25kg — Pishori",
-        sku: "DRY-RC-2500",
-        supplier: "Mwea Millers",
-        quantity: "22",
-        unit: "bags",
-        status: "reorder",
-      },
-      {
-        id: "3",
-        name: "Sugar 50kg — Mumias",
-        sku: "DRY-SG-5000",
-        supplier: "Mumias Sugar",
-        quantity: "41",
-        unit: "bags",
-        status: "in-stock",
-      },
-      {
-        id: "4",
-        name: "Wheat flour 2kg — Exe",
-        sku: "DRY-WF-2000",
-        supplier: "Unga Group",
-        quantity: "9",
-        unit: "packets",
-        status: "reorder",
-      },
-    ],
-  },
-  {
-    id: "oils",
-    name: "COOKING OILS",
-    items: [
-      {
-        id: "5",
-        name: "Cooking oil 5L — Rina",
-        sku: "LIQ-CO-5000",
-        supplier: "Pwani Oil",
-        quantity: "76",
-        unit: "jerricans",
-        status: "in-stock",
-      },
-      {
-        id: "6",
-        name: "Cooking fat 1kg — Kimbo",
-        sku: "LIQ-CF-1000",
-        supplier: "Bidco Africa",
-        quantity: "14",
-        unit: "tins",
-        status: "reorder",
-      },
-    ],
-  },
-];
-
-const NOTIFICATIONS: NotificationItem[] = [
-  {
-    id: "1",
-    title: "3 items are at or below reorder level",
-    time: "20 min ago",
-    tone: "warning",
-  },
-  {
-    id: "2",
-    title: "Stock count completed for Nairobi Branch",
-    time: "Yesterday",
-    tone: "positive",
-  },
-];
-
-const SEARCH_DATA: SearchItem[] = CATEGORIES.flatMap((c) =>
-  c.items.map((i) => ({
-    id: i.id,
-    title: i.name,
-    subtitle: `${i.sku} · ${i.supplier}`,
-  })),
-);
 
 function CategoryHeader({
   name,
@@ -236,26 +152,89 @@ function InventoryItemRow({ item }: { item: InventoryItem }) {
   );
 }
 
+const titleCase = (s: string) => s.charAt(0) + s.slice(1).toLowerCase();
+
 export default function InventoryScreen() {
-  const [branch, setBranch] = useState("Nairobi Branch");
+  const router = useRouter();
+  const user = useAuthStore((s) => s.user);
+  const notifications = useNotificationItems();
+  const [products, setProducts] = useState<ProductResponse[]>([]);
+  const [suppliers, setSuppliers] = useState<SupplierResponse[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const [category, setCategory] = useState("All categories");
   const [searchVisible, setSearchVisible] = useState(false);
 
+  useFocusEffect(
+    useCallback(() => {
+      Promise.all([
+        getProducts(),
+        getSuppliers().catch((): SupplierResponse[] => []),
+      ])
+        .then(([p, s]) => {
+          setProducts(p);
+          setSuppliers(s);
+          setError(null);
+        })
+        .catch((e) => setError(apiError(e, "Failed to load inventory")));
+    }, []),
+  );
+
+  const stock = useMemo(() => {
+    const supplierName = new Map(suppliers.map((s) => [s.id, s.name]));
+    const groups = new Map<string, InventoryItem[]>();
+    const value = new Map<string, number>();
+    for (const p of products) {
+      const key = (p.category || "UNCATEGORISED").toUpperCase();
+      groups.set(key, [
+        ...(groups.get(key) ?? []),
+        {
+          id: p.id,
+          name: p.name,
+          sku: p.sku,
+          supplier: p.supplierId
+            ? (supplierName.get(p.supplierId) ?? "—")
+            : "No supplier",
+          quantity: String(p.stockQuantity),
+          unit: "units",
+          status:
+            p.stockQuantity <= p.lowStockThreshold ? "reorder" : "in-stock",
+        },
+      ]);
+      value.set(key, (value.get(key) ?? 0) + p.unitPrice * p.stockQuantity);
+    }
+    const categories: Category[] = [...groups].map(([name, items]) => ({
+      id: name,
+      name,
+      items,
+    }));
+    const total = [...value.values()].reduce((a, b) => a + b, 0);
+    return { categories, value, total };
+  }, [products, suppliers]);
+
+  const searchData: SearchItem[] = useMemo(
+    () =>
+      stock.categories.flatMap((c) =>
+        c.items.map((i) => ({
+          id: i.id,
+          title: i.name,
+          subtitle: `${i.sku} · ${i.supplier}`,
+        })),
+      ),
+    [stock],
+  );
+
   const visible =
     category === "All categories"
-      ? CATEGORIES
-      : CATEGORIES.filter((c) => c.name === category);
-
-  const totalItems = CATEGORIES.reduce((sum, c) => sum + c.items.length, 0);
-  const lowStock = CATEGORIES.reduce(
-    (sum, c) => sum + c.items.filter((i) => i.status === "reorder").length,
-    0,
-  );
+      ? stock.categories
+      : stock.categories.filter((c) => c.name === category);
+  const lowStock = products.filter(
+    (p) => p.stockQuantity <= p.lowStockThreshold,
+  ).length;
+  const outOfStock = products.filter((p) => p.stockQuantity === 0).length;
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: SURFACE }}>
       <StatusBar barStyle="dark-content" backgroundColor={SURFACE} />
-
       <ScrollView
         className="flex-1"
         contentContainerStyle={{
@@ -264,27 +243,12 @@ export default function InventoryScreen() {
         }}
         showsVerticalScrollIndicator={false}
       >
-        <AppHeader
-          initials="WM"
-          name="Wanjiku Mwangi"
-          role="Owner · Mizani Trading Co."
-          notifications={NOTIFICATIONS}
-        />
+        <AppHeader {...headerProps(user)} notifications={notifications} />
 
         <PillRow>
           <SelectorPill
-            label={branch}
-            options={[
-              "Nairobi Branch",
-              "Mombasa Branch",
-              "Kisumu Branch",
-              "All Branches",
-            ]}
-            onSelect={setBranch}
-          />
-          <SelectorPill
             label={category}
-            options={["All categories", ...CATEGORIES.map((c) => c.name)]}
+            options={["All categories", ...stock.categories.map((c) => c.name)]}
             onSelect={setCategory}
           />
           <SearchTrigger onPress={() => setSearchVisible(true)} />
@@ -292,8 +256,9 @@ export default function InventoryScreen() {
 
         <PageTitle
           title="Inventory"
-          subtitle={`${branch} · ${CATEGORIES.length} categories · counted 16 Aug 2026`}
+          subtitle={`${stock.categories.length} categories · ${products.length} products`}
         />
+        {!!error && <ErrorBanner message={error} />}
 
         <View className="px-4">
           <View style={{ marginBottom: SPACE_4 }}>
@@ -304,23 +269,25 @@ export default function InventoryScreen() {
             />
           </View>
 
-          <AlertBanner
-            tone="warning"
-            title={`${lowStock} items need reordering`}
-            description="These SKUs are at or below their reorder level. Raise a purchase order before the next delivery window closes."
-            actionLabel="Create purchase order"
-            onAction={() => showToast("Purchase orders coming soon")}
-          />
+          {lowStock > 0 && (
+            <AlertBanner
+              tone="warning"
+              title={`${lowStock} items need reordering`}
+              description="These SKUs are at or below their reorder level. Raise a purchase order before the next delivery window closes."
+              actionLabel="Create purchase order"
+              onAction={() => showToast("Purchase orders coming soon")}
+            />
+          )}
 
           <GradientStatCard
             title="Stock on Hand"
-            badgeLabel={`${CATEGORIES.length} categories`}
-            value="KSh 1,284,600"
-            helper={`${totalItems} distinct SKUs tracked at this branch`}
-            rows={[
-              { label: "Dry goods", value: "KSh 921,400" },
-              { label: "Cooking oils", value: "KSh 363,200" },
-            ]}
+            badgeLabel={`${stock.categories.length} categories`}
+            value={`KSh ${ksh(stock.total)}`}
+            helper={`${products.length} distinct SKUs tracked`}
+            rows={stock.categories.slice(0, 4).map((c) => ({
+              label: titleCase(c.name),
+              value: `KSh ${ksh(stock.value.get(c.name) ?? 0)}`,
+            }))}
             actionLabel="Export valuation"
             onAction={() => showToast("Preparing valuation…")}
             colors={GRADIENT_FOREST}
@@ -333,9 +300,9 @@ export default function InventoryScreen() {
             value={String(lowStock)}
             helper="Items at or below their reorder level"
             footerStats={[
-              { label: "DRY GOODS", value: "2" },
-              { label: "OILS", value: "1" },
-              { label: "OUT OF STOCK", value: "0" },
+              { label: "TO REORDER", value: String(lowStock) },
+              { label: "OUT OF STOCK", value: String(outOfStock) },
+              { label: "TOTAL SKUS", value: String(products.length) },
             ]}
           />
 
@@ -343,7 +310,7 @@ export default function InventoryScreen() {
             <PrimaryButton
               label="Add Product"
               icon={<Plus size={16} color="#FFFFFF" />}
-              onPress={() => showToast("Product form coming soon")}
+              onPress={() => router.push("/(dashboard)/add-product")}
               colors={GRADIENT_FOREST}
             />
           </View>
@@ -366,15 +333,13 @@ export default function InventoryScreen() {
       </ScrollView>
 
       <BottomNav />
-
       <SearchModal
         visible={searchVisible}
         onClose={() => setSearchVisible(false)}
-        data={SEARCH_DATA}
+        data={searchData}
         placeholder="Search products, SKUs, suppliers…"
         onSelect={(item) => showToast(item.title)}
       />
-
       <ToastHost />
     </SafeAreaView>
   );

@@ -29,7 +29,7 @@ export default function RootLayout() {
   useEffect(() => {
     const checkOnboarding = async () => {
       // 🛠️ DEV ONLY: uncomment to clear the flag and see onboarding again.
-      // await AsyncStorage.removeItem("hasSeenOnboarding");
+      //await AsyncStorage.removeItem("hasSeenOnboarding");
 
       const seen = await AsyncStorage.getItem("hasSeenOnboarding");
       setHasSeenOnboarding(seen === "true");

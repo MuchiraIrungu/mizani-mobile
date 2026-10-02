@@ -34,6 +34,7 @@ export default function DashboardScreen() {
 
   useEffect(() => {
     const check = async () => {
+      //await AsyncStorage.removeItem("hasSeenOnboarding");
       const seen = await AsyncStorage.getItem("hasSeenOnboarding");
       if (seen === "true") {
         router.replace("/(auth)/login");

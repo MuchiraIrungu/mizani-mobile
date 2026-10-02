@@ -1,8 +1,17 @@
 import { CheckCheck } from "lucide-react-native";
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ScrollView, StatusBar, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { ErrorBanner } from "@/components/auth/AuthUI";
+import {
+  getNotifications,
+  markAllNotificationsRead,
+} from "@/services/dashboardDataService";
+import { useAuthStore } from "@/store/authStore";
+import { NotificationResponse } from "@/types/dashboard";
+import { toNotificationItem } from "@/utils/dashboardStats";
+import { useFocusEffect } from "expo-router";
 import {
   AppHeader,
   BG,
@@ -35,75 +44,30 @@ import {
 
 /* Notifications — the full alert feed behind the header bell. */
 
-type FeedItem = NotificationItem & { detail: string; group: string };
+type FeedItem = NotificationItem & { group: string; read: boolean };
 
-const FEED: FeedItem[] = [
-  {
-    id: "1",
-    title: "2 invoices awaiting an eTIMS control number",
-    detail: "INV-2043 and INV-2044 cannot be included in the VAT-3 return until KRA returns a control number.",
-    time: "Today, 09:12",
-    tone: "danger",
-    group: "KRA",
-  },
-  {
-    id: "2",
-    title: "KRA filing deadline in 5 days",
-    detail: "Your August VAT-3 return is due on 20 Sep 2026.",
-    time: "Today, 08:00",
-    tone: "warning",
-    group: "KRA",
-  },
-  {
-    id: "3",
-    title: "3 items are at or below reorder level",
-    detail: "Rice 25kg, Wheat flour 2kg and Cooking fat 1kg need a purchase order.",
-    time: "Today, 07:40",
-    tone: "warning",
-    group: "Inventory",
-  },
-  {
-    id: "4",
-    title: "New invoice #INV-2044 created",
-    detail: "KSh 18,560 to Mama Njeri Grocers, due 14 Sep 2026.",
-    time: "2 hours ago",
-    tone: "positive",
-    group: "Sales",
-  },
-  {
-    id: "5",
-    title: "Payment received from Sokoni Retail",
-    detail: "KSh 121,034 settled against INV-2043 via M-Pesa.",
-    time: "3 hours ago",
-    tone: "positive",
-    group: "Sales",
-  },
-  {
-    id: "6",
-    title: "2 employees are still awaiting payment",
-    detail: "Joseph Otieno and Mercy Wairimu have not been paid for August.",
-    time: "Yesterday",
-    tone: "danger",
-    group: "Payroll",
-  },
-  {
-    id: "7",
-    title: "Stock count completed for Nairobi Branch",
-    detail: "All 6 SKUs reconciled with no variance.",
-    time: "Yesterday",
-    tone: "positive",
-    group: "Inventory",
-  },
-];
-
-const GROUPS = ["All", "KRA", "Sales", "Inventory", "Payroll"];
-
-const TONE_STYLE: Record<string, { fill: string; fg: string; label: string }> = {
-  danger: { fill: DANGER_BG, fg: DANGER, label: "Action needed" },
-  warning: { fill: WARNING_BG, fg: WARNING, label: "Due soon" },
-  positive: { fill: GREEN_TINT, fg: GREEN, label: "Update" },
-  neutral: { fill: SURFACE, fg: TEXT_SECONDARY, label: "Info" },
+const GROUP_BY_TYPE: Record<string, string> = {
+  KRA_DEADLINE: "KRA",
+  ETIMS: "KRA",
+  INVOICE: "Sales",
+  PAYMENT: "Sales",
+  LOW_STOCK: "Inventory",
+  PAYROLL: "Payroll",
 };
+
+const toFeedItem = (n: NotificationResponse): FeedItem => ({
+  ...toNotificationItem(n),
+  group: GROUP_BY_TYPE[n.type] ?? "General",
+  read: n.readAt != null,
+});
+
+const TONE_STYLE: Record<string, { fill: string; fg: string; label: string }> =
+  {
+    danger: { fill: DANGER_BG, fg: DANGER, label: "Action needed" },
+    warning: { fill: WARNING_BG, fg: WARNING, label: "Due soon" },
+    positive: { fill: GREEN_TINT, fg: GREEN, label: "Update" },
+    neutral: { fill: SURFACE, fg: TEXT_SECONDARY, label: "Info" },
+  };
 
 function FeedRow({ item }: { item: FeedItem }) {
   const tone = TONE_STYLE[item.tone];
@@ -137,21 +101,49 @@ function FeedRow({ item }: { item: FeedItem }) {
       >
         {item.title}
       </Text>
-      <Text
-        className="text-[12px] leading-[18px]"
-        style={{ color: TEXT_SECONDARY, fontFamily: FONT_REG }}
-      >
-        {item.detail}
-      </Text>
     </View>
   );
 }
 
 export default function NotificationsScreen() {
+  const user = useAuthStore((s) => s.user);
+  const [feed, setFeed] = useState<FeedItem[]>([]);
   const [group, setGroup] = useState("All");
+  const [error, setError] = useState<string | null>(null);
 
-  const items = FEED.filter((f) => (group === "All" ? true : f.group === group));
-  const needsAction = FEED.filter((f) => f.tone === "danger").length;
+  const load = useCallback(async () => {
+    try {
+      setError(null);
+      setFeed((await getNotifications()).map(toFeedItem));
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to load notifications",
+      );
+    }
+  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load]),
+  );
+
+  const handleMarkAll = async () => {
+    try {
+      await markAllNotificationsRead();
+      await load();
+      showToast("All notifications marked as read");
+    } catch {
+      showToast("Could not mark as read");
+    }
+  };
+
+  const groups = useMemo(
+    () => ["All", ...new Set(feed.map((f) => f.group))],
+    [feed],
+  );
+  const items = feed.filter((f) => group === "All" || f.group === group);
+  const urgent = feed.filter((f) => f.tone === "danger" && !f.read);
+  const urgentIn = (g: string) => urgent.filter((f) => f.group === g).length;
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: SURFACE }}>
@@ -166,30 +158,34 @@ export default function NotificationsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <AppHeader
-          initials="WM"
-          name="Wanjiku Mwangi"
-          role="Owner · Mizani Trading Co."
-          notifications={FEED}
+          initials={
+            `${user?.firstName?.[0] ?? ""}${user?.lastName?.[0] ?? ""}` || "??"
+          }
+          name={`${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim()}
+          role={user?.roleName ?? ""}
+          notifications={feed.filter((f) => !f.read)}
         />
 
         <PageTitle
           title="Notifications"
-          subtitle={`${FEED.length} alerts · ${needsAction} need action`}
+          subtitle={`${feed.length} alerts · ${urgent.length} need action`}
         />
+
+        {!!error && <ErrorBanner message={error} />}
 
         <View className="px-4">
           <View style={{ marginBottom: SPACE_4 }}>
             <GhostPillButton
               label="Mark all as read"
               icon={<CheckCheck size={14} color={TEXT_SECONDARY} />}
-              onPress={() => showToast("All notifications marked as read")}
+              onPress={handleMarkAll}
             />
           </View>
 
           <GradientStatCard
             title="Needs Your Attention"
-            badgeLabel={`${needsAction} items`}
-            value={`${needsAction} blocking alerts`}
+            badgeLabel={`${urgent.length} items`}
+            value={`${urgent.length} blocking alerts`}
             helper="Items that stop a filing, a payment or a delivery from completing"
             rows={[
               { label: "KRA", value: "1" },
@@ -199,7 +195,7 @@ export default function NotificationsScreen() {
             colors={GRADIENT_FOREST}
           />
 
-          <FilterChips options={GROUPS} value={group} onChange={setGroup} />
+          <FilterChips options={groups} value={group} onChange={setGroup} />
 
           {items.length === 0 ? (
             <View

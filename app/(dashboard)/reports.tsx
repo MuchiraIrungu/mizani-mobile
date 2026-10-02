@@ -1,8 +1,25 @@
 import { Download } from "lucide-react-native";
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ScrollView, StatusBar, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { ErrorBanner } from "@/components/auth/AuthUI";
+import { useNotificationItems } from "@/hooks/useNotificationItems";
+import { getTransactions } from "@/services/dashboardDataService";
+import { useAuthStore } from "@/store/authStore";
+import { TransactionResponse } from "@/types/dashboard";
+import {
+  byType,
+  fmtRange,
+  getPeriodRange,
+  inRange,
+  ksh,
+  pctChange,
+  previousRange,
+  sum,
+} from "@/utils/dashboardStats";
+import { apiError, headerProps } from "@/utils/header";
+import { useFocusEffect } from "expo-router";
 import {
   AppHeader,
   BottomNav,
@@ -25,53 +42,114 @@ import {
   SURFACE,
   TEXT_PRIMARY,
   ToastHost,
-  type NotificationItem,
 } from "../../components/dashboard/dashboardUI";
 
 /* Reports — revenue vs expenses for the period, expense mix and exportable
    statements. */
 
-/* Shades of the brand green, darkest for the largest share, so the mix reads
-   as one family rather than five unrelated hues. */
-const EXPENSE_BREAKDOWN = [
-  { label: "Stock purchases", value: "KSh 812,000", pct: "58%", color: "#063D24" },
-  { label: "Payroll", value: "KSh 402,150", pct: "29%", color: "#0A5C36" },
-  { label: "Rent & utilities", value: "KSh 96,400", pct: "7%", color: "#15803D" },
-  { label: "Logistics", value: "KSh 54,600", pct: "4%", color: "#22C55E" },
-  { label: "Other", value: "KSh 29,000", pct: "2%", color: "#94A3B8" },
-];
+const SHADES = ["#063D24", "#0A5C36", "#15803D", "#22C55E", "#94A3B8"];
+const SOURCES = ["M-Pesa", "Bank", "Cash"];
+const fmtPct = (c: number | null) =>
+  c == null ? "—" : `${c >= 0 ? "+" : ""}${c.toFixed(1)}%`;
 
 const STATEMENTS = [
-  { label: "Profit & Loss", detail: "Income statement for the period", value: "PDF" },
-  { label: "Balance Sheet", detail: "Assets, liabilities and equity", value: "PDF" },
-  { label: "Cash Flow", detail: "Operating, investing and financing", value: "PDF" },
+  {
+    label: "Profit & Loss",
+    detail: "Income statement for the period",
+    value: "PDF",
+  },
+  {
+    label: "Balance Sheet",
+    detail: "Assets, liabilities and equity",
+    value: "PDF",
+  },
+  {
+    label: "Cash Flow",
+    detail: "Operating, investing and financing",
+    value: "PDF",
+  },
   { label: "Trial Balance", detail: "All ledger accounts", value: "CSV" },
 ];
 
-const PERIOD_LABEL: Record<string, string> = {
-  W: "This week",
-  M: "1 – 31 Aug 2026",
-  Q: "Q3 2026",
-  Y: "FY 2026",
-};
-
-const NOTIFICATIONS: NotificationItem[] = [
-  {
-    id: "1",
-    title: "August close is ready to review",
-    time: "2 hours ago",
-    tone: "positive",
-  },
-];
-
 export default function ReportsScreen() {
+  const user = useAuthStore((s) => s.user);
+  const notifications = useNotificationItems();
   const [period, setPeriod] = useState("M");
-  const [branch, setBranch] = useState("Nairobi Branch");
+  const [branch, setBranch] = useState("All Branches");
+  const [transactions, setTransactions] = useState<TransactionResponse[]>([]);
+  const [now, setNow] = useState(() => new Date());
+  const [error, setError] = useState<string | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      getTransactions()
+        .then((t) => {
+          setTransactions(t);
+          setNow(new Date());
+          setError(null);
+        })
+        .catch((e) => setError(apiError(e, "Failed to load report data")));
+    }, []),
+  );
+
+  const range = useMemo(() => getPeriodRange(period, now), [period, now]);
+  const branchOptions = useMemo(
+    () => [
+      "All Branches",
+      ...new Set(transactions.map((t) => t.branchName).filter(Boolean)),
+    ],
+    [transactions],
+  );
+  const scoped = useMemo(
+    () =>
+      transactions.filter(
+        (t) =>
+          inRange(t, range) &&
+          (branch === "All Branches" || t.branchName === branch),
+      ),
+    [transactions, range, branch],
+  );
+  const previous = useMemo(() => {
+    const p = previousRange(range);
+    return transactions.filter(
+      (t) =>
+        inRange(t, p) && (branch === "All Branches" || t.branchName === branch),
+    );
+  }, [transactions, range, branch]);
+
+  const periodLabel =
+    period === "W"
+      ? "This week"
+      : period === "Q"
+        ? `Q${Math.floor(range.start.getMonth() / 3) + 1} ${range.start.getFullYear()}`
+        : period === "Y"
+          ? `FY ${range.start.getFullYear()}`
+          : fmtRange(range);
+
+  const sales = byType(scoped, "SALE");
+  const expenses = byType(scoped, "EXPENSE");
+  const revenue = sum(sales);
+  const costs = sum(expenses);
+  const net = revenue - costs;
+  const margin = revenue ? Math.round((net / revenue) * 100) : 0;
+  const prevRevenue = sum(byType(previous, "SALE"));
+  const prevCosts = sum(byType(previous, "EXPENSE"));
+  const prevNet = prevRevenue - prevCosts;
+  const bySource = (txs: TransactionResponse[]) =>
+    SOURCES.map((s) => ({
+      label: s,
+      amount: sum(txs.filter((t) => t.paymentProviderDisplayName === s)),
+    }));
+
+  const breakdown = bySource(expenses).map((r, i) => ({
+    ...r,
+    pct: costs ? Math.round((r.amount / costs) * 100) : 0,
+    color: SHADES[i],
+  }));
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: SURFACE }}>
       <StatusBar barStyle="dark-content" backgroundColor={SURFACE} />
-
       <ScrollView
         className="flex-1"
         contentContainerStyle={{
@@ -80,30 +158,16 @@ export default function ReportsScreen() {
         }}
         showsVerticalScrollIndicator={false}
       >
-        <AppHeader
-          initials="WM"
-          name="Wanjiku Mwangi"
-          role="Owner · Mizani Trading Co."
-          notifications={NOTIFICATIONS}
-        />
-
+        <AppHeader {...headerProps(user)} notifications={notifications} />
         <PillRow>
           <SelectorPill
             label={branch}
-            options={[
-              "Nairobi Branch",
-              "Mombasa Branch",
-              "Kisumu Branch",
-              "All Branches",
-            ]}
+            options={branchOptions}
             onSelect={setBranch}
           />
         </PillRow>
-
-        <PageTitle
-          title="Reports"
-          subtitle={`${branch} · ${PERIOD_LABEL[period]}`}
-        />
+        <PageTitle title="Reports" subtitle={`${branch} · ${periodLabel}`} />
+        {!!error && <ErrorBanner message={error} />}
 
         <View className="px-4">
           <PillTabs
@@ -114,13 +178,13 @@ export default function ReportsScreen() {
 
           <GradientStatCard
             title="Net Profit"
-            badgeLabel="+18.2%"
-            value="KSh 1,092,750"
-            helper={`Revenue less operating costs for ${PERIOD_LABEL[period]}`}
+            badgeLabel={fmtPct(prevNet > 0 ? pctChange(net, prevNet) : null)}
+            value={`KSh ${ksh(net)}`}
+            helper={`Revenue less operating costs for ${periodLabel}`}
             rows={[
-              { label: "Revenue", value: "KSh 2,486,900" },
-              { label: "Operating costs", value: "KSh 1,394,150" },
-              { label: "Gross margin", value: "44%" },
+              { label: "Revenue", value: `KSh ${ksh(revenue)}` },
+              { label: "Operating costs", value: `KSh ${ksh(costs)}` },
+              { label: "Margin", value: `${margin}%` },
             ]}
             actionLabel="Export summary"
             onAction={() => showToast("Preparing summary…")}
@@ -129,31 +193,28 @@ export default function ReportsScreen() {
 
           <StatCard
             title="Revenue"
-            badgeLabel="+12.5%"
+            badgeLabel={fmtPct(pctChange(revenue, prevRevenue))}
             badgeTone="positive"
-            value="KSh 2,486,900"
-            helper="Against the previous month"
-            footerStats={[
-              { label: "M-PESA", value: "1,642,300" },
-              { label: "BANK", value: "618,200" },
-              { label: "CASH", value: "226,400" },
-            ]}
+            value={`KSh ${ksh(revenue)}`}
+            helper="Against the previous period"
+            footerStats={bySource(sales).map((r) => ({
+              label: r.label.toUpperCase(),
+              value: ksh(r.amount),
+            }))}
           />
 
           <StatCard
             title="Expenses"
-            badgeLabel="+4.1%"
+            badgeLabel={fmtPct(pctChange(costs, prevCosts))}
             badgeTone="warning"
-            value="KSh 1,394,150"
-            helper="Gross margin 44% this month"
-            progressPercent={78}
+            value={`KSh ${ksh(costs)}`}
+            helper={`Margin ${margin}% this period`}
           />
 
           <SectionHeading
             title="Expense Breakdown"
-            subtitle="Share of total operating costs"
+            subtitle="Share of operating costs by payment source"
           />
-
           <View
             className="rounded-[14px] p-5"
             style={{
@@ -166,7 +227,7 @@ export default function ReportsScreen() {
               elevation: 4,
             }}
           >
-            {EXPENSE_BREAKDOWN.map((row, i) => (
+            {breakdown.map((row, i) => (
               <View
                 key={row.label}
                 className="flex-row items-center justify-between py-3"
@@ -191,7 +252,7 @@ export default function ReportsScreen() {
                   className="text-[13px] mr-3"
                   style={{ color: TEXT_PRIMARY, fontFamily: FONT_SEMI }}
                 >
-                  {row.value}
+                  KSh {ksh(row.amount)}
                 </Text>
                 <View
                   className="px-2.5 py-1 rounded-[999px]"
@@ -201,7 +262,7 @@ export default function ReportsScreen() {
                     className="text-[11px]"
                     style={{ color: "#FFFFFF", fontFamily: FONT_SEMI }}
                   >
-                    {row.pct}
+                    {row.pct}%
                   </Text>
                 </View>
               </View>
@@ -210,7 +271,7 @@ export default function ReportsScreen() {
 
           <DataCard
             title="Statements"
-            subtitle={`Ready to export for ${PERIOD_LABEL[period]}`}
+            subtitle={`Ready to export for ${periodLabel}`}
           >
             {STATEMENTS.map((s, i) => (
               <DataRow

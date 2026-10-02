@@ -12,6 +12,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { createTransaction } from "@/services/dashboardDataService";
+import { useAuthStore } from "@/store/authStore";
 import {
   BG,
   BORDER,
@@ -50,25 +52,62 @@ function FieldLabel({ label }: { label: string }) {
 
 export default function AddTransactionScreen() {
   const router = useRouter();
-
+  //const myAccessToken = useAuthStore((state) => state.tokens?.accessToken);
   const [type, setType] = useState("Sale");
   const [source, setSource] = useState("M-Pesa");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("");
-  const [reference, setReference] = useState("");
+  //const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  const handleSave = () => {
-    if (!amount.trim()) {
-      setError("Enter an amount before saving.");
+  const branchId = useAuthStore((s) => s.user?.branchId);
+
+  const handleSave = async () => {
+    const trimmedAmount = amount.trim();
+    const numericalAmount = Number(trimmedAmount);
+
+    if (
+      !trimmedAmount ||
+      Number.isNaN(numericalAmount) ||
+      numericalAmount <= 0
+    ) {
+      setError("Enter a valid amount before saving");
       return;
     }
+
+    if (!branchId) {
+      setError("No branch assigned to account");
+      return;
+    }
+    console.log(branchId);
+    console.log(useAuthStore.getState().user);
+
     setError(null);
-    // TODO: wire up to the real create-transaction endpoint.
-    showToast(`${type} of KSh ${amount} saved`);
-    router.back();
+    setSaving(true);
+
+    try {
+      await createTransaction({
+        entryType: type === "Purchase" ? "EXPENSE" : "SALE",
+        paymentProviderDisplayName: source,
+        amount: numericalAmount,
+        description:
+          [category.trim(), notes.trim()].filter(Boolean).join(" — ") ||
+          undefined,
+        occurredAt: new Date().toISOString(),
+        branchId,
+      });
+      showToast(`${type} of KSh ${trimmedAmount} saved`);
+      router.back();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to save transaction",
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   const inputStyle = (field: string) => ({
@@ -164,24 +203,6 @@ export default function AddTransactionScreen() {
                 color: TEXT_PRIMARY,
                 fontFamily: FONT_REG,
                 ...inputStyle("category"),
-              }}
-            />
-
-            <FieldLabel label="Reference / Invoice #" />
-            <TextInput
-              value={reference}
-              onChangeText={setReference}
-              onFocus={() => setFocusedField("reference")}
-              onBlur={() => setFocusedField(null)}
-              placeholder="e.g. INV-2045"
-              placeholderTextColor={TEXT_SECONDARY}
-              autoCapitalize="characters"
-              className="h-[52px] px-4 rounded-[12px] text-[15px] mb-5"
-              style={{
-                backgroundColor: BG,
-                color: TEXT_PRIMARY,
-                fontFamily: FONT_REG,
-                ...inputStyle("reference"),
               }}
             />
 

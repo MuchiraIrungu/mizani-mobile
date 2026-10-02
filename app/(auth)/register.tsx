@@ -7,7 +7,7 @@ import {
   PillTabs,
 } from "@/components/auth/AuthUI";
 import { register } from "@/services/authService";
-import { useAuthStore } from "@/store/authStore";
+//import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
@@ -45,7 +45,7 @@ export default function RegisterScreen() {
   const [loading, setLoading] = useState(false);
 
   const router = useRouter();
-  const setSession = useAuthStore((state) => state.setSession);
+  //const setSession = useAuthStore((state) => state.setSession);
 
   const handleRegister = async () => {
     if (loading) return;
@@ -60,7 +60,7 @@ export default function RegisterScreen() {
 
     try {
       // NOTE: adjust the payload shape to match your authService.register signature.
-      const data = await register({
+      const res = await register({
         fullName,
         phone,
         businessName,
@@ -68,9 +68,15 @@ export default function RegisterScreen() {
         email,
         password,
       });
-      const { user, tokens } = data;
-      setSession(user, tokens);
-      router.replace("/(tabs)");
+
+      if (res.status === 201) {
+        router.replace({
+          pathname: "/(auth)/login",
+          params: { email: res.data.email },
+        });
+      } else {
+        setError("Something went wrong. Please try again.");
+      } 
     } catch (err: any) {
       setError(
         err.response?.data?.message ||
