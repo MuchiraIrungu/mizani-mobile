@@ -1,8 +1,15 @@
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { LogOut, Pencil, Plus } from "lucide-react-native";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Pressable, ScrollView, StatusBar, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+import { useNotificationItems } from "@/hooks/useNotificationItems";
+import { getBusiness, getEmployees } from "@/services/dashboardDataService";
+import { useAuthStore } from "@/store/authStore";
+import type { EmployeeResponse } from "@/types/employee";
+import type { BusinessResponse } from "@/types/users";
+import { headerProps } from "@/utils/header";
 
 import {
   AppHeader,
@@ -30,7 +37,6 @@ import {
   TEXT_PRIMARY,
   TEXT_SECONDARY,
   ToastHost,
-  type NotificationItem,
 } from "../../components/dashboard/dashboardUI";
 
 /* Settings — business profile, connected integrations, app preferences and
@@ -61,21 +67,6 @@ const INTEGRATIONS = [
     name: "QuickBooks Export",
     detail: "Last export 31 Jul 2026 · Monthly journal",
     status: "Active" as const,
-  },
-];
-
-const TEAM = [
-  { name: "Wanjiku Mwangi", detail: "Owner · full access", role: "Owner" },
-  { name: "Grace Achieng", detail: "Nairobi Branch · sales & inventory", role: "Manager" },
-  { name: "Mercy Wairimu", detail: "Accounts · read-only reports", role: "Clerk" },
-];
-
-const NOTIFICATIONS: NotificationItem[] = [
-  {
-    id: "1",
-    title: "eTIMS needs attention on 2 invoices",
-    time: "Today, 09:12",
-    tone: "danger",
   },
 ];
 
@@ -138,6 +129,20 @@ function ToggleRow({
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
+  const notifications = useNotificationItems();
+  const [business, setBusiness] = useState<BusinessResponse | null>(null);
+  const [team, setTeam] = useState<EmployeeResponse[]>([]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!user?.id) return;
+      getBusiness(user.id).then(setBusiness).catch(() => {});
+      getEmployees().then(setTeam).catch(() => {});
+    }, [user?.id]),
+  );
+
   const [prefs, setPrefs] = useState({
     etims: true,
     reorder: true,
@@ -162,10 +167,9 @@ export default function SettingsScreen() {
       >
         <AppHeader
           showBack
-          initials="WM"
-          name="Wanjiku Mwangi"
-          role="Owner · Mizani Trading Co."
-          notifications={NOTIFICATIONS}
+          {...headerProps(user)}
+          role={[user?.roleName, business?.name].filter(Boolean).join(" · ")}
+          notifications={notifications}
         />
 
         <PageTitle
@@ -176,13 +180,18 @@ export default function SettingsScreen() {
         <View className="px-4">
           <GradientStatCard
             title="Business Profile"
-            badgeLabel="Verified"
-            value="Mizani Trading Co. Ltd"
-            helper="Westlands, Nairobi · 3 branches"
+            badgeLabel={business?.status ?? "—"}
+            value={business?.name ?? "—"}
+            helper={[business?.address, business?.businessType]
+              .filter(Boolean)
+              .join(" · ") || "—"}
             rows={[
-              { label: "KRA PIN", value: "P051428776K" },
-              { label: "Registration", value: "PVT-8KLM2QP" },
-              { label: "VAT status", value: "Registered" },
+              { label: "KRA PIN", value: business?.kraPin ?? "—" },
+              {
+                label: "Registration",
+                value: business?.registrationNumber ?? "—",
+              },
+              { label: "Currency", value: business?.currency ?? "KES" },
             ]}
             actionLabel="Edit Profile"
             actionIcon={<Pencil size={15} color={GREEN} />}
@@ -257,27 +266,30 @@ export default function SettingsScreen() {
 
           <SectionHeading
             title="Team Access"
-            subtitle={`${TEAM.length} people can sign in`}
+            subtitle={`${team.length} people on the team`}
           />
 
-          {TEAM.map((t) => (
+          {team.map((t) => (
             <InfoRow
-              key={t.name}
+              key={t.id}
               initials={t.name
                 .split(" ")
                 .map((w) => w[0])
                 .slice(0, 2)
                 .join("")}
               title={t.name}
-              subtitle={t.detail}
-              trailingLabel={t.role}
-              trailingTone={t.role === "Owner" ? "positive" : "neutral"}
+              subtitle={t.phone ?? "—"}
+              trailingLabel={t.roleTitle ?? "Staff"}
+              trailingTone={t.roleTitle === "Owner" ? "positive" : "neutral"}
               onPress={() => showToast(`${t.name} · permissions coming soon`)}
             />
           ))}
 
           <Pressable
-            onPress={() => router.replace("/login")}
+            onPress={() => {
+              logout();
+              router.replace("/login");
+            }}
             className="flex-row items-center justify-center rounded-[999px] h-[50px]"
             style={{ backgroundColor: DANGER_BG, marginTop: SPACE_4 }}
           >

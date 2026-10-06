@@ -5,7 +5,10 @@ import { ScrollView, StatusBar, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useNotificationItems } from "@/hooks/useNotificationItems";
-import { getSuppliers } from "@/services/dashboardDataService";
+import {
+  getSupplierPayments,
+  getSuppliers,
+} from "@/services/dashboardDataService";
 import { useAuthStore } from "@/store/authStore";
 import type { SupplierResponse } from "@/types/supplier";
 import { ksh } from "@/utils/dashboardStats";
@@ -40,9 +43,8 @@ import {
 
 /* Suppliers — payables by supplier account, ageing and supplier register. */
 
-// TODO: replace with real supplier bills once a payables table exists.
+// Bills are pending supplier payments; ageing runs from the payment's creation date.
 type Bill = { supplierId: string; amount: number; dueDate: string }; // dueDate "YYYY-MM-DD"
-const BILLS: Bill[] = [];
 
 const titleCase = (s: string) =>
   s.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
@@ -52,6 +54,7 @@ export default function SuppliersScreen() {
   const user = useAuthStore((s) => s.user);
   const notifications = useNotificationItems();
   const [suppliers, setSuppliers] = useState<SupplierResponse[]>([]);
+  const [bills, setBills] = useState<Bill[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState("All");
   const [searchVisible, setSearchVisible] = useState(false);
@@ -59,9 +62,16 @@ export default function SuppliersScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      getSuppliers()
-        .then((s) => {
+      Promise.all([getSuppliers(), getSupplierPayments("PENDING")])
+        .then(([s, p]) => {
           setSuppliers(s);
+          setBills(
+            p.map((x) => ({
+              supplierId: x.supplierId,
+              amount: Number(x.amount),
+              dueDate: x.createdAt.slice(0, 10),
+            })),
+          );
           setNow(new Date());
           setError(null);
         })
@@ -77,7 +87,7 @@ export default function SuppliersScreen() {
       now.getMonth(),
       now.getDate(),
     ).getTime();
-    for (const b of BILLS) {
+    for (const b of bills) {
       owed.set(b.supplierId, (owed.get(b.supplierId) ?? 0) + b.amount);
       const days = Math.floor(
         (today - new Date(`${b.dueDate}T00:00:00`).getTime()) / 864e5,
@@ -93,7 +103,7 @@ export default function SuppliersScreen() {
         { label: "31 – 60+ days", detail: "Past due", value: buckets[2] },
       ],
     };
-  }, [now]);
+  }, [now, bills]);
 
   const balanceOf = (s: SupplierResponse) => owed.get(s.id) ?? 0;
   const owing = suppliers.filter((s) => balanceOf(s) > 0).length;

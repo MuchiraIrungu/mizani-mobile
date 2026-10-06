@@ -15,3 +15,16 @@ export interface UserInfo {
   businessId: string;
   role: string;
 }
+export interface BusinessResponse {
+  id: string;
+  name: string;
+  kraPin: string | null;
+  businessType: string | null;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  registrationNumber: string | null;
+  currency: string | null;
+  themeColor: string | null;
+  status: string | null;
+}

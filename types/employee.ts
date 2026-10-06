@@ -18,3 +18,13 @@ export interface PayrollRunResponse {
   createdAt: string;
   entries: PayrollEntryResponse[];
 }
+export interface EmployeeResponse {
+  id: string;
+  businessId: string;
+  userId: string | null;
+  name: string;
+  roleTitle: string | null;
+  phone: string | null;
+  standardNetPay: number;
+  createdAt: string;
+}

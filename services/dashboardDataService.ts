@@ -3,7 +3,7 @@ import type {
   NotificationResponse,
   TransactionResponse,
 } from "@/types/dashboard";
-import { PayrollRunResponse } from "@/types/employee";
+import { EmployeeResponse, PayrollRunResponse } from "@/types/employee";
 import { ProductRequest, ProductResponse } from "@/types/product";
 import {
   CustomerRequest,
@@ -13,8 +13,12 @@ import {
   SaleRequest,
   SaleResponse,
 } from "@/types/sales";
-import { SupplierRequest, SupplierResponse } from "@/types/supplier";
-import type { UserResponseDto } from "@/types/users";
+import {
+  SupplierPaymentResponse,
+  SupplierRequest,
+  SupplierResponse,
+} from "@/types/supplier";
+import type { BusinessResponse, UserResponseDto } from "@/types/users";
 import { api } from "./api";
 
 export async function getUserInfo(id: string): Promise<UserResponseDto> {
@@ -62,7 +66,7 @@ export const getSuppliers = async () =>
 export const createSupplier = async (s: SupplierRequest) =>
   (await api.post<SupplierResponse>("/suppliers", s)).data;
 export const getCustomers = async () =>
-  (await api.get<CustomerResponse[]>("/customers")).data;
+  (await api.get<CustomerResponse[]>("/customer")).data;
 export const createSale = async (branchId: string, s: SaleRequest) =>
   (await api.post<SaleResponse>(`/sales/branch/${branchId}`, s)).data;
 export const createInvoice = async (i: InvoiceRequest) =>
@@ -72,7 +76,7 @@ export const getPayrollRuns = async () =>
 export const createPayrollRun = async (body: { payoutDate: string }) =>
   (await api.post<PayrollRunResponse>("/payroll/runs", body)).data;
 export const createCustomer = async (c: CustomerRequest) =>
-  (await api.post<CustomerResponse>("/customers", c)).data;
+  (await api.post<CustomerResponse>("/customer", c)).data;
 export const completeSale = async (saleId: string) =>
   (await api.post<SaleResponse>(`/sales/${saleId}/complete`)).data;
 export const generatePayrollEntries = async (runId: string) =>
@@ -81,3 +85,14 @@ export const generatePayrollEntries = async (runId: string) =>
       `/payroll/runs/${runId}/generate-entries`,
     )
   ).data;
+export const getSupplierPayments = async (status?: "PENDING" | "PAID" | "FAILED") =>
+  (
+    await api.get<SupplierPaymentResponse[]>("/supplier-payments", {
+      params: { status },
+    })
+  ).data;
+export const getEmployees = async () =>
+  (await api.get<EmployeeResponse[]>("/employees")).data;
+// The backend resolves the business from the token; the path id is ignored.
+export const getBusiness = async (userId: string) =>
+  (await api.get<BusinessResponse>(`/businesses/${userId}`)).data;
