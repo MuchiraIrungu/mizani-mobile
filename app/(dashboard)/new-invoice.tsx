@@ -10,7 +10,7 @@ import type { ProductResponse } from "@/types/product";
 import type { CustomerResponse } from "@/types/sales";
 import { ksh } from "@/utils/dashboardStats";
 import { apiError } from "@/utils/header";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { Check, Plus } from "lucide-react-native";
 import { useCallback, useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
@@ -48,7 +48,10 @@ export default function NewInvoiceScreen() {
   const [terms, setTerms] = useState("30 days");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [mode, setMode] = useState("Credit invoice");
+  const params = useLocalSearchParams<{ mode?: string }>();
+  const [mode, setMode] = useState(
+    params.mode === "walk-in" ? "Walk-in sale" : "Credit invoice",
+  );
 
   const walkIn = mode === "Walk-in sale";
 
@@ -56,10 +59,10 @@ export default function NewInvoiceScreen() {
     useCallback(() => {
       getCustomers()
         .then(setCustomers)
-        .catch(() => {});
+        .catch((e) => setError(apiError(e, "Could not load customers")));
       getProducts()
         .then(setProducts)
-        .catch(() => {});
+        .catch((e) => setError(apiError(e, "Could not load products")));
     }, []),
   );
 
@@ -100,7 +103,6 @@ export default function NewInvoiceScreen() {
       const sale = await createSale(branchId, {
         customerId: cust?.id,
         currency: "KES",
-        status: "PENDING",
         lineItems,
       });
       try {
@@ -111,7 +113,6 @@ export default function NewInvoiceScreen() {
             saleId: sale.id,
             customerId: cust!.id,
             dueDate: isoDate(due),
-            etimsValidated: false,
           });
         }
       } catch (err) {

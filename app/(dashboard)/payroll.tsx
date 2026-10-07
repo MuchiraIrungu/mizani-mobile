@@ -1,20 +1,27 @@
-import { CheckCircle2, Send } from "lucide-react-native";
+import { CheckCircle2, Send, UserPlus } from "lucide-react-native";
 import { useCallback, useState } from "react";
-import { ScrollView, StatusBar, View } from "react-native";
+import { Alert, ScrollView, StatusBar, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ErrorBanner } from "@/components/auth/AuthUI";
 import { useNotificationItems } from "@/hooks/useNotificationItems";
 import {
+  completePayrollRun,
   createPayrollRun,
   generatePayrollEntries,
+  getEmployees,
   getPayrollRuns,
+  payPayrollEntry,
 } from "@/services/dashboardDataService";
 import { useAuthStore } from "@/store/authStore";
-import { PayrollEntryResponse, PayrollRunResponse } from "@/types/employee";
+import {
+  EmployeeResponse,
+  PayrollEntryResponse,
+  PayrollRunResponse,
+} from "@/types/employee";
 import { ksh } from "@/utils/dashboardStats";
 import { apiError, headerProps } from "@/utils/header";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import {
   AlertBanner,
   AppHeader,
@@ -68,8 +75,17 @@ const monthOf = (iso: string) => {
 const isoDate = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
+const initialsOf = (name: string) =>
+  name
+    .split(" ")
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join("");
+
 export default function PayrollScreen() {
+  const router = useRouter();
   const user = useAuthStore((s) => s.user);
+  const [employees, setEmployees] = useState<EmployeeResponse[]>([]);
   const notifications = useNotificationItems();
   const [runs, setRuns] = useState<PayrollRunResponse[]>([]);
   const [monthSel, setMonthSel] = useState<string | null>(null);
@@ -80,7 +96,11 @@ export default function PayrollScreen() {
 
   const load = useCallback(async () => {
     try {
-      const r = await getPayrollRuns();
+      const [r, emps] = await Promise.all([
+        getPayrollRuns(),
+        getEmployees().catch((): EmployeeResponse[] => []),
+      ]);
+      setEmployees(emps);
       setRuns([...r].sort((a, b) => b.payoutDate.localeCompare(a.payoutDate)));
       setError(null);
     } catch (e) {
@@ -145,6 +165,47 @@ export default function PayrollScreen() {
     }
   };
 
+  const editEmployee = (id: string) =>
+    router.push({ pathname: "/(dashboard)/add-employee", params: { id } });
+
+  const payEntry = (e: PayrollEntryResponse) => {
+    if (e.status === "PAID") return showToast(`${e.employeeName} already paid`);
+    Alert.alert(e.employeeName, `Release net pay of KSh ${ksh(e.netPay)}?`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Mark paid",
+        onPress: async () => {
+          try {
+            await payPayrollEntry(e.id);
+            await load();
+            showToast(`${e.employeeName} marked paid`);
+          } catch (err) {
+            showToast(apiError(err, "Could not pay employee"));
+          }
+        },
+      },
+    ]);
+  };
+
+  const payAll = async () => {
+    if (busy || !run) return;
+    const unpaid = entries.filter((e) => e.status === "PENDING");
+    if (unpaid.length === 0 && run.status === "COMPLETED")
+      return showToast("This run is already complete");
+    setBusy(true);
+    try {
+      for (const e of unpaid) await payPayrollEntry(e.id);
+      await completePayrollRun(run.id);
+      await load();
+      showToast(`${month} payroll completed`);
+    } catch (err) {
+      showToast(apiError(err, "Could not complete payroll"));
+      await load();
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: SURFACE }}>
       <StatusBar barStyle="dark-content" backgroundColor={SURFACE} />
@@ -182,7 +243,7 @@ export default function PayrollScreen() {
               title={`${pending} employees not yet paid`}
               description="Net pay has been computed but no payment has been released."
               actionLabel="Release payments"
-              onAction={() => showToast("Payment release coming soon")}
+              onAction={payAll}
             />
           )}
 
@@ -261,18 +322,12 @@ export default function PayrollScreen() {
           {shown.map((e) => (
             <InfoRow
               key={e.id}
-              initials={e.employeeName
-                .split(" ")
-                .map((w) => w[0])
-                .slice(0, 2)
-                .join("")}
+              initials={initialsOf(e.employeeName)}
               title={e.employeeName}
               subtitle={`Gross KSh ${ksh(e.grossPay)} · net KSh ${ksh(e.netPay)}`}
               trailingLabel={e.status === "PAID" ? "Paid" : "Pending"}
               trailingTone={e.status === "PAID" ? "positive" : "warning"}
-              onPress={() =>
-                showToast(`${e.employeeName} · payslip coming soon`)
-              }
+              onPress={() => payEntry(e)}
             />
           ))}
 
@@ -280,14 +335,38 @@ export default function PayrollScreen() {
             <PrimaryButton
               label="Mark all as paid"
               icon={<CheckCircle2 size={16} color="#FFFFFF" />}
-              onPress={() => showToast("Payment sending coming soon")}
+              onPress={payAll}
+              colors={GRADIENT_FOREST}
+            />
+          </View>
+
+          <View style={{ marginTop: SPACE_4 }}>
+            <SectionHeading
+              title="Employees"
+              subtitle={`${employees.length} on the register · tap to edit`}
+            />
+          </View>
+          {employees.map((e) => (
+            <InfoRow
+              key={e.id}
+              initials={initialsOf(e.name)}
+              title={e.name}
+              subtitle={`${e.roleTitle ?? "No title"} · net KSh ${ksh(e.standardNetPay)}`}
+              onPress={() => editEmployee(e.id)}
+            />
+          ))}
+          <View style={{ marginTop: SPACE_3 }}>
+            <PrimaryButton
+              label="Add employee"
+              icon={<UserPlus size={16} color="#FFFFFF" />}
+              onPress={() => router.push("/(dashboard)/add-employee")}
               colors={GRADIENT_FOREST}
             />
           </View>
         </View>
       </ScrollView>
 
-      <BottomNav />
+      <BottomNav onAdd={() => router.push("/(dashboard)/add-employee")} />
       <SearchModal
         visible={searchVisible}
         onClose={() => setSearchVisible(false)}

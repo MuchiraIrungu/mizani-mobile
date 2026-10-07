@@ -53,7 +53,7 @@ function FieldLabel({ label }: { label: string }) {
 export default function AddTransactionScreen() {
   const router = useRouter();
   //const myAccessToken = useAuthStore((state) => state.tokens?.accessToken);
-  const [type, setType] = useState("Sale");
+  const [type, setType] = useState("Expense");
   const [source, setSource] = useState("M-Pesa");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("");
@@ -64,6 +64,16 @@ export default function AddTransactionScreen() {
   const [saving, setSaving] = useState(false);
 
   const branchId = useAuthStore((s) => s.user?.branchId);
+
+  // Sales are recorded with their items (KRA TIS §6.15), never as a bare
+  // amount, so "Sale" hands over to the itemised walk-in sale form.
+  const onTypeChange = (t: string) => {
+    if (t !== "Sale") return setType(t);
+    router.replace({
+      pathname: "/(dashboard)/new-invoice",
+      params: { mode: "walk-in" },
+    });
+  };
 
   const handleSave = async () => {
     const trimmedAmount = amount.trim();
@@ -82,15 +92,13 @@ export default function AddTransactionScreen() {
       setError("No branch assigned to account");
       return;
     }
-    console.log(branchId);
-    console.log(useAuthStore.getState().user);
 
     setError(null);
     setSaving(true);
 
     try {
       await createTransaction({
-        entryType: type === "Purchase" ? "EXPENSE" : "SALE",
+        entryType: "EXPENSE",
         paymentProviderDisplayName: source,
         amount: numericalAmount,
         description:
@@ -158,7 +166,7 @@ export default function AddTransactionScreen() {
               <PillTabs
                 options={TRANSACTION_TYPES}
                 value={type}
-                onChange={setType}
+                onChange={onTypeChange}
               />
             </View>
 

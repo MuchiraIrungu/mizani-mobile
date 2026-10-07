@@ -1,6 +1,6 @@
 import { Boxes, Download, Plus } from "lucide-react-native";
 import { useCallback, useMemo, useState } from "react";
-import { ScrollView, StatusBar, Text, View } from "react-native";
+import { Pressable, ScrollView, StatusBar, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ErrorBanner } from "@/components/auth/AuthUI";
@@ -102,9 +102,16 @@ function CategoryHeader({
   );
 }
 
-function InventoryItemRow({ item }: { item: InventoryItem }) {
+function InventoryItemRow({
+  item,
+  onPress,
+}: {
+  item: InventoryItem;
+  onPress: () => void;
+}) {
   return (
-    <View
+    <Pressable
+      onPress={onPress}
       className="flex-row items-center rounded-[12px] p-4 mb-3"
       style={{ backgroundColor: BG, ...SHADOW_SM }}
     >
@@ -148,7 +155,7 @@ function InventoryItemRow({ item }: { item: InventoryItem }) {
           tone={item.status === "in-stock" ? "positive" : "warning"}
         />
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -325,20 +332,34 @@ export default function InventoryScreen() {
                 }
               />
               {cat.items.map((item) => (
-                <InventoryItemRow key={item.id} item={item} />
+                <InventoryItemRow
+                  key={item.id}
+                  item={item}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/(dashboard)/add-product",
+                      params: { id: item.id },
+                    })
+                  }
+                />
               ))}
             </View>
           ))}
         </View>
       </ScrollView>
 
-      <BottomNav />
+      <BottomNav onAdd={() => router.push("/(dashboard)/add-product")} />
       <SearchModal
         visible={searchVisible}
         onClose={() => setSearchVisible(false)}
         data={searchData}
         placeholder="Search products, SKUs, suppliers…"
-        onSelect={(item) => showToast(item.title)}
+        onSelect={(item) =>
+          router.push({
+            pathname: "/(dashboard)/add-product",
+            params: { id: item.id },
+          })
+        }
       />
       <ToastHost />
     </SafeAreaView>

@@ -20,3 +20,7 @@ export interface ProductRequest {
   stockQuantity?: number;
   lowStockThreshold?: number;
 }
+export interface StockAdjustmentRequest {
+  quantityChange: number;
+  reason?: string;
+}

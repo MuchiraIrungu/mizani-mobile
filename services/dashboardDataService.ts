@@ -3,8 +3,17 @@ import type {
   NotificationResponse,
   TransactionResponse,
 } from "@/types/dashboard";
-import { EmployeeResponse, PayrollRunResponse } from "@/types/employee";
-import { ProductRequest, ProductResponse } from "@/types/product";
+import {
+  EmployeeRequest,
+  EmployeeResponse,
+  PayrollEntryResponse,
+  PayrollRunResponse,
+} from "@/types/employee";
+import {
+  ProductRequest,
+  ProductResponse,
+  StockAdjustmentRequest,
+} from "@/types/product";
 import {
   CustomerRequest,
   CustomerResponse,
@@ -14,6 +23,7 @@ import {
   SaleResponse,
 } from "@/types/sales";
 import {
+  SupplierPaymentRequest,
   SupplierPaymentResponse,
   SupplierRequest,
   SupplierResponse,
@@ -96,3 +106,74 @@ export const getEmployees = async () =>
 // The backend resolves the business from the token; the path id is ignored.
 export const getBusiness = async (userId: string) =>
   (await api.get<BusinessResponse>(`/businesses/${userId}`)).data;
+
+// Products
+export const getProduct = async (id: string) =>
+  (await api.get<ProductResponse>(`/products/${id}`)).data;
+export const updateProduct = async (id: string, p: Partial<ProductRequest>) =>
+  (await api.put<ProductResponse>(`/products/${id}`, p)).data;
+export const deleteProduct = async (id: string) => {
+  await api.delete(`/products/${id}`);
+};
+export const adjustStock = async (id: string, body: StockAdjustmentRequest) =>
+  (await api.patch<ProductResponse>(`/products/${id}/stock`, body)).data;
+
+// Customers
+export const getCustomer = async (id: string) =>
+  (await api.get<CustomerResponse>(`/customer/${id}`)).data;
+export const updateCustomer = async (id: string, c: CustomerRequest) =>
+  (await api.put<CustomerResponse>(`/customer/${id}`, c)).data;
+export const deleteCustomer = async (id: string) => {
+  await api.delete(`/customer/${id}`);
+};
+
+// Suppliers
+export const getSupplier = async (id: string) =>
+  (await api.get<SupplierResponse>(`/suppliers/${id}`)).data;
+export const updateSupplier = async (id: string, s: SupplierRequest) =>
+  (await api.put<SupplierResponse>(`/suppliers/${id}`, s)).data;
+export const deleteSupplier = async (id: string) => {
+  await api.delete(`/suppliers/${id}`);
+};
+export const getPaymentsForSupplier = async (supplierId: string) =>
+  (
+    await api.get<SupplierPaymentResponse[]>("/supplier-payments", {
+      params: { supplierId },
+    })
+  ).data;
+export const createSupplierPayment = async (body: SupplierPaymentRequest) =>
+  (await api.post<SupplierPaymentResponse>("/supplier-payments", body)).data;
+export const completeSupplierPayment = async (id: string) =>
+  (await api.post<SupplierPaymentResponse>(`/supplier-payments/${id}/complete`))
+    .data;
+export const cancelSupplierPayment = async (id: string) =>
+  (await api.post<SupplierPaymentResponse>(`/supplier-payments/${id}/cancel`))
+    .data;
+
+// Invoices
+export const getInvoice = async (id: string) =>
+  (await api.get<InvoiceResponse>(`/invoices/${id}`)).data;
+export const markInvoicePaid = async (id: string) =>
+  (await api.post<InvoiceResponse>(`/invoices/${id}/pay`)).data;
+export const markInvoiceOverdue = async (id: string) =>
+  (await api.post<InvoiceResponse>(`/invoices/${id}/overdue`)).data;
+export const voidInvoice = async (id: string) =>
+  (await api.post<InvoiceResponse>(`/invoices/${id}/void`)).data;
+
+// Employees
+export const getEmployee = async (id: string) =>
+  (await api.get<EmployeeResponse>(`/employees/${id}`)).data;
+export const createEmployee = async (e: EmployeeRequest) =>
+  (await api.post<EmployeeResponse>("/employees", e)).data;
+export const updateEmployee = async (id: string, e: EmployeeRequest) =>
+  (await api.put<EmployeeResponse>(`/employees/${id}`, e)).data;
+export const deleteEmployee = async (id: string) => {
+  await api.delete(`/employees/${id}`);
+};
+
+// Payroll
+export const payPayrollEntry = async (entryId: string) =>
+  (await api.post<PayrollEntryResponse>(`/payroll/runs/entries/${entryId}/pay`))
+    .data;
+export const completePayrollRun = async (runId: string) =>
+  (await api.post<PayrollRunResponse>(`/payroll/runs/${runId}/complete`)).data;

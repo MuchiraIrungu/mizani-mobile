@@ -24,3 +24,9 @@ export interface SupplierPaymentResponse {
   createdAt: string;
   updatedAt: string | null;
 }
+export interface SupplierPaymentRequest {
+  supplierId: string;
+  referenceNumber?: string;
+  amount: number;
+  currency: string;
+}

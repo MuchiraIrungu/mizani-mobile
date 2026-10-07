@@ -28,3 +28,9 @@ export interface EmployeeResponse {
   standardNetPay: number;
   createdAt: string;
 }
+export interface EmployeeRequest {
+  name: string;
+  roleTitle?: string;
+  phone?: string;
+  standardNetPay: number;
+}

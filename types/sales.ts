@@ -30,7 +30,6 @@ export interface CustomerRequest {
 export interface SaleRequest {
   customerId?: string;
   currency: string;
-  status: "PENDING";
   occurredAt?: string;
   lineItems: { productId: string; quantity: number }[];
 }
@@ -42,5 +41,4 @@ export interface InvoiceRequest {
   saleId: string;
   customerId: string;
   dueDate?: string;
-  etimsValidated: boolean;
 }

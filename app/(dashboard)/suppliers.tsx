@@ -237,14 +237,19 @@ export default function SuppliersScreen() {
                 subtitle={`${s.category ?? "General"} · ${s.phone ?? "no phone"}`}
                 trailingLabel={bal > 0 ? `KSh ${ksh(bal)}` : "Settled"}
                 trailingTone={bal > 0 ? "warning" : "positive"}
-                onPress={() => showToast(`${s.name} · statement coming soon`)}
+                onPress={() =>
+                  router.push({
+                    pathname: "/(dashboard)/add-supplier",
+                    params: { id: s.id },
+                  })
+                }
               />
             );
           })}
         </View>
       </ScrollView>
 
-      <BottomNav />
+      <BottomNav onAdd={() => router.push("/(dashboard)/add-supplier")} />
       <SearchModal
         visible={searchVisible}
         onClose={() => setSearchVisible(false)}

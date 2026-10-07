@@ -1,8 +1,8 @@
 import {
-    createCustomer,
-    deleteCustomer,
-    getCustomer,
-    updateCustomer,
+    createEmployee,
+    deleteEmployee,
+    getEmployee,
+    updateEmployee,
 } from "@/services/dashboardDataService";
 import { apiError } from "@/utils/header";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -18,50 +18,56 @@ import {
     SPACE_4,
 } from "../../components/dashboard/dashboardUI";
 
-/* Add / edit customer. Opened with ?id=<customerId> it edits and can delete. */
+/* Add / edit employee. Opened with ?id=<employeeId> it edits and can delete. */
 
-export default function AddCustomerScreen() {
+export default function AddEmployeeScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const editing = !!id;
   const [name, setName] = useState("");
+  const [roleTitle, setRoleTitle] = useState("");
   const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
+  const [netPay, setNetPay] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!id) return;
-    getCustomer(id)
-      .then((c) => {
-        setName(c.name);
-        setPhone(c.phone ?? "");
-        setEmail(c.email ?? "");
+    getEmployee(id)
+      .then((e) => {
+        setName(e.name);
+        setRoleTitle(e.roleTitle ?? "");
+        setPhone(e.phone ?? "");
+        setNetPay(String(e.standardNetPay));
       })
-      .catch((e) => setError(apiError(e, "Failed to load customer")));
+      .catch((e) => setError(apiError(e, "Failed to load employee")));
   }, [id]);
 
   const save = async () => {
     if (saving) return;
-    if (!name.trim()) return setError("Customer name is required");
+    const standardNetPay = Number(netPay);
+    if (!name.trim()) return setError("Employee name is required");
+    if (!netPay.trim() || Number.isNaN(standardNetPay) || standardNetPay <= 0)
+      return setError("Enter a monthly net pay above 0");
     const body = {
       name: name.trim(),
+      roleTitle: roleTitle.trim() || undefined,
       phone: phone.trim() || undefined,
-      email: email.trim() || undefined,
+      standardNetPay,
     };
     setError(null);
     setSaving(true);
     try {
       if (editing) {
-        await updateCustomer(id, body);
+        await updateEmployee(id, body);
         showToast(`${body.name} updated`);
       } else {
-        await createCustomer(body);
+        await createEmployee(body);
         showToast(`${body.name} added`);
       }
       router.back();
     } catch (err) {
-      setError(apiError(err, "Failed to save customer"));
+      setError(apiError(err, "Failed to save employee"));
     } finally {
       setSaving(false);
     }
@@ -69,18 +75,18 @@ export default function AddCustomerScreen() {
 
   const remove = () => {
     if (!id) return;
-    Alert.alert("Delete customer", `Delete ${name}?`, [
+    Alert.alert("Remove employee", `Remove ${name} from the register?`, [
       { text: "Cancel", style: "cancel" },
       {
-        text: "Delete",
+        text: "Remove",
         style: "destructive",
         onPress: async () => {
           try {
-            await deleteCustomer(id);
-            showToast(`${name} deleted`);
+            await deleteEmployee(id);
+            showToast(`${name} removed`);
             router.back();
           } catch (err) {
-            setError(apiError(err, "Failed to delete customer"));
+            setError(apiError(err, "Failed to remove employee"));
           }
         },
       },
@@ -88,12 +94,18 @@ export default function AddCustomerScreen() {
   };
 
   return (
-    <FormScreen title={editing ? "Edit Customer" : "Add Customer"} error={error}>
+    <FormScreen title={editing ? "Edit Employee" : "Add Employee"} error={error}>
       <Field
-        label="Customer name"
+        label="Full name"
         value={name}
         onChangeText={setName}
-        placeholder="e.g. Sokoni Retail Group"
+        placeholder="e.g. Jane Wanjiku"
+      />
+      <Field
+        label="Role / title (optional)"
+        value={roleTitle}
+        onChangeText={setRoleTitle}
+        placeholder="e.g. Cashier"
       />
       <Field
         label="Phone (optional)"
@@ -103,15 +115,14 @@ export default function AddCustomerScreen() {
         keyboardType="phone-pad"
       />
       <Field
-        label="Email (optional)"
-        value={email}
-        onChangeText={setEmail}
-        placeholder="accounts@example.com"
-        keyboardType="email-address"
-        autoCapitalize="none"
+        label="Monthly net pay (KSh)"
+        value={netPay}
+        onChangeText={setNetPay}
+        placeholder="0.00"
+        keyboardType="numeric"
       />
       <PrimaryButton
-        label={editing ? "Save changes" : "Save customer"}
+        label={editing ? "Save changes" : "Save employee"}
         icon={<Check size={16} color="#FFFFFF" />}
         onPress={save}
         colors={GRADIENT_FOREST}
@@ -119,7 +130,7 @@ export default function AddCustomerScreen() {
       {editing && (
         <View style={{ marginTop: SPACE_4 }}>
           <PrimaryButton
-            label="Delete customer"
+            label="Remove employee"
             icon={<Trash2 size={16} color="#FFFFFF" />}
             onPress={remove}
             colors={GRADIENT_CRIMSON}
