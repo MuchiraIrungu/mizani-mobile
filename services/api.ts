@@ -2,8 +2,10 @@ import { useAuthStore } from "@/store/authStore";
 import axios from "axios";
 
 export const api = axios.create({
-  baseURL: "https://mizani.mooo.com/api/v1",
-  //http://192.168.0.100:8000
+  baseURL: "http://192.168.0.100:8080/api/v1",
+  //192.168.1.151 -> roberms
+  //http://192.168.0.100:8080 -> Juja
+  //https://mizani.mooo.com -> hosted
   //U5sjtq$d9VwiAZ3H
 });
 
