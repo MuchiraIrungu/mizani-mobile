@@ -1,3 +1,6 @@
+import { notificationApi } from "@/services/resources";
+import { displayName, initialsOf, roleLabel, useAuthStore } from "@/store/authStore";
+import { relativeTime } from "@/utils/format";
 import { LinearGradient } from "expo-linear-gradient";
 import { usePathname, useRouter } from "expo-router";
 import {
@@ -821,11 +824,40 @@ export function UserMenu({
  * Settings and Log out all live in its menu — there is deliberately no
  * separate gear icon) and notifications on the right.
  */
+/** The newest unread notifications for the header bell. */
+function useHeaderNotifications(enabled: boolean): NotificationItem[] {
+  const [items, setItems] = useState<NotificationItem[]>([]);
+  useEffect(() => {
+    if (!enabled) return;
+    let alive = true;
+    notificationApi
+      .list(true)
+      .then((list) => {
+        if (!alive) return;
+        setItems(
+          list.slice(0, 5).map((n) => ({
+            id: n.id,
+            title: n.message,
+            time: relativeTime(n.createdAt),
+            tone: n.severity === "SUCCESS" ? "positive" : n.severity === "DANGER" ? "danger" : "warning",
+          })),
+        );
+      })
+      .catch(() => {
+        /* the bell just stays empty if notifications can't load */
+      });
+    return () => {
+      alive = false;
+    };
+  }, [enabled]);
+  return items;
+}
+
 export function AppHeader({
-  initials = "WM",
+  initials,
   name,
   role,
-  notifications = [],
+  notifications,
   showBack,
 }: {
   initials?: string;
@@ -836,6 +868,12 @@ export function AppHeader({
   showBack?: boolean;
 }) {
   const router = useRouter();
+  const user = useAuthStore((st) => st.user);
+  const logout = useAuthStore((st) => st.logout);
+  const live = useHeaderNotifications(notifications === undefined);
+  const shownName = name ?? displayName(user);
+  const shownInitials = initials ?? initialsOf(shownName || "?");
+  const shownRole = role ?? roleLabel(user?.roleName);
 
   return (
     <View className="flex-row items-center justify-between px-4">
@@ -850,17 +888,20 @@ export function AppHeader({
           </Pressable>
         )}
         <UserMenu
-          initials={initials}
-          name={name}
-          role={role}
-          onAccount={() => showToast("Account profile coming soon")}
+          initials={shownInitials}
+          name={shownName}
+          role={shownRole}
+          onAccount={() => router.push(SETTINGS_HREF as never)}
           onSettings={() => router.push(SETTINGS_HREF as never)}
-          onLogout={() => router.replace("/login" as never)}
+          onLogout={() => {
+            logout();
+            router.replace("/(auth)/login" as never);
+          }}
         />
       </View>
 
       <NotificationBell
-        notifications={notifications}
+        notifications={notifications ?? live}
         onViewAll={() => router.push("/(dashboard)/notifications" as never)}
       />
     </View>

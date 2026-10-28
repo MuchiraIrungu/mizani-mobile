@@ -1,3 +1,5 @@
+import type { ApiUser } from "./api";
+
 export interface LoginRequest {
   email: string;
   password: string;
@@ -8,19 +10,17 @@ export interface AuthTokens {
   refreshToken: string;
 }
 
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: "owner" | "staff" | "accountant";
-  branchId: string;
-}
+/** The signed-in user, as returned by POST /users/login. */
+export type User = ApiUser;
 
+/** POST /api/v1/users/login */
 export interface LoginResponse {
+  accessToken: string;
+  refreshToken: string;
   user: User;
-  tokens: AuthTokens;
 }
 
+/** POST /api/v1/users/register — returns the created user only (no tokens). */
 export interface RegisterRequest {
   fullName: string;
   phone: string;
@@ -28,9 +28,4 @@ export interface RegisterRequest {
   businessType: string;
   email: string;
   password: string;
-}
-
-export interface RegisterResponse {
-  user: User;
-  tokens: AuthTokens;
 }

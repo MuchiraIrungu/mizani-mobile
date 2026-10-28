@@ -6,7 +6,8 @@ import {
   GoogleButton,
   PillTabs,
 } from "@/components/auth/AuthUI";
-import { register } from "@/services/authService";
+import { apiError } from "@/services/api";
+import { login, register } from "@/services/authService";
 import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -58,24 +59,36 @@ export default function RegisterScreen() {
     setError(null);
     setLoading(true);
 
+    if (!fullName.trim() || !businessName.trim() || !email.trim()) {
+      setError("Fill in your name, business name and email.");
+      setLoading(false);
+      return;
+    }
+    if (password.length < 8) {
+      setError("Use a password of at least 8 characters.");
+      setLoading(false);
+      return;
+    }
+
     try {
-      // NOTE: adjust the payload shape to match your authService.register signature.
-      const data = await register({
-        fullName,
-        phone,
-        businessName,
+      // Registration creates the user, their business and a main branch,
+      // but returns no tokens — so sign straight in afterwards.
+      await register({
+        fullName: fullName.trim(),
+        phone: phone.trim(),
+        businessName: businessName.trim(),
         businessType,
-        email,
+        email: email.trim(),
         password,
       });
-      const { user, tokens } = data;
-      setSession(user, tokens);
-      router.replace("/(tabs)");
-    } catch (err: any) {
-      setError(
-        err.response?.data?.message ||
-          "Something went wrong. Please try again.",
-      );
+      const { user, accessToken, refreshToken } = await login({
+        email: email.trim(),
+        password,
+      });
+      setSession(user, { accessToken, refreshToken });
+      router.replace("/(dashboard)/main");
+    } catch (err) {
+      setError(apiError(err));
     } finally {
       setLoading(false);
     }
